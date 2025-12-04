@@ -23,35 +23,35 @@
     --spinner-bg: #f3f3f3;
 }
 
-/* 暗色主题 */
+/* 暗色主题 - Apple HIG + Material Design */
 [data-theme="dark"] {
-    --bg-gradient-start: #1a1a2e;
-    --bg-gradient-end: #16213e;
-    --bg-primary: #0d0d14;
-    --bg-secondary: #1a1a2e;
-    --bg-tertiary: #252540;
-    --bg-hover: #2d2d50;
-    --text-primary: #f0f4f8;
-    --text-secondary: #b8c5d6;
-    --text-muted: #8a9bb5;
-    --text-placeholder: #6b7a94;
-    --border-color: #3a3a5c;
-    --input-border: #4a4a70;
-    --shadow-color: rgba(0,0,0,0.4);
-    --shadow-hover: rgba(0,0,0,0.5);
-    --modal-bg: rgba(0,0,0,0.85);
-    --toast-bg: #252540;
-    --toast-shadow: rgba(0,0,0,0.5);
-    --switch-bg: #4a4a70;
-    --spinner-bg: #3a3a5c;
-    /* 暗黑模式专用颜色 */
-    --badge-success-bg: #1a4d2e;
-    --badge-success-color: #6ee7a0;
-    --badge-danger-bg: #4d1a1a;
-    --badge-danger-color: #f88;
-    --badge-info-bg: #1a3a4d;
-    --badge-info-color: #7dd3fc;
-    --link-color: #a0b4ff;
+    --bg-gradient-start: #121212;
+    --bg-gradient-end: #1e1e1e;
+    --bg-primary: #121212;
+    --bg-secondary: #1e1e1e;
+    --bg-tertiary: #2c2c2c;
+    --bg-hover: #383838;
+    --text-primary: #ffffff;
+    --text-secondary: #e0e0e0;
+    --text-muted: #9e9e9e;
+    --text-placeholder: #6b6b6b;
+    --border-color: #3d3d3d;
+    --input-border: #4a4a4a;
+    --shadow-color: rgba(0,0,0,0.5);
+    --shadow-hover: rgba(0,0,0,0.7);
+    --modal-bg: rgba(0,0,0,0.8);
+    --toast-bg: #2c2c2c;
+    --toast-shadow: rgba(0,0,0,0.6);
+    --switch-bg: #4a4a4a;
+    --spinner-bg: #3d3d3d;
+    /* Apple HIG 语义色 */
+    --badge-success-bg: rgba(48,209,88,0.16);
+    --badge-success-color: #30d158;
+    --badge-danger-bg: rgba(255,69,58,0.16);
+    --badge-danger-color: #ff453a;
+    --badge-info-bg: rgba(100,210,255,0.16);
+    --badge-info-color: #64d2ff;
+    --link-color: #0a84ff;
 }
 
 body {
@@ -113,8 +113,8 @@ body {
         [data-theme="dark"] .form-group input:focus,
         [data-theme="dark"] .form-group textarea:focus,
         [data-theme="dark"] .form-group select:focus {
-            border-color: #818cf8;
-            box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.25);
+            border-color: #0a84ff;
+            box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.25);
         }
         .form-group input::placeholder, .form-group textarea::placeholder {
             color: var(--text-placeholder);
@@ -215,7 +215,39 @@ body {
             background: var(--bg-hover);
             box-shadow: 0 2px 8px var(--shadow-color);
         }
-        
+        /* 暗黑模式按钮优化 - Apple 系统色 */
+        [data-theme="dark"] .btn {
+            background: #0a84ff;
+            color: #f0f0f0;
+        }
+        [data-theme="dark"] .btn:hover {
+            box-shadow: 0 5px 15px rgba(10, 132, 255, 0.4);
+        }
+        [data-theme="dark"] .btn-danger {
+            background: #ff453a;
+        }
+        [data-theme="dark"] .btn-danger:hover {
+            box-shadow: 0 5px 15px rgba(255, 69, 58, 0.4);
+        }
+        [data-theme="dark"] .btn-success {
+            background: #30d158;
+        }
+        [data-theme="dark"] .btn-success:hover {
+            box-shadow: 0 5px 15px rgba(48, 209, 88, 0.4);
+        }
+        [data-theme="dark"] .btn-info {
+            background: #64d2ff;
+        }
+        [data-theme="dark"] .btn-info:hover {
+            box-shadow: 0 5px 15px rgba(100, 210, 255, 0.4);
+        }
+        [data-theme="dark"] .btn-warning {
+            background: #ff9f0a;
+        }
+        [data-theme="dark"] .btn-warning:hover {
+            box-shadow: 0 5px 15px rgba(255, 159, 10, 0.4);
+        }
+
         /* Dashboard Styles */
         .dashboard {
             display: none;
@@ -311,28 +343,32 @@ body {
             background-clip: text;
         }
         [data-theme="dark"] .stat-card .value-default {
-            background: linear-gradient(135deg, #818cf8, #a78bfa);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #0a84ff;
+            background: none;
+            -webkit-background-clip: unset;
+            -webkit-text-fill-color: unset;
+            background-clip: unset;
         }
         [data-theme="dark"] .stat-card .value-info {
-            background: linear-gradient(135deg, #7dd3fc, #38bdf8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #64d2ff;
+            background: none;
+            -webkit-background-clip: unset;
+            -webkit-text-fill-color: unset;
+            background-clip: unset;
         }
         [data-theme="dark"] .stat-card .value-success {
-            background: linear-gradient(135deg, #6ee7a0, #4ade80);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #30d158;
+            background: none;
+            -webkit-background-clip: unset;
+            -webkit-text-fill-color: unset;
+            background-clip: unset;
         }
         [data-theme="dark"] .stat-card .value-warning {
-            background: linear-gradient(135deg, #fbbf24, #f59e0b);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #ff9f0a;
+            background: none;
+            -webkit-background-clip: unset;
+            -webkit-text-fill-color: unset;
+            background-clip: unset;
         }
         
         /* Section Styles */
@@ -478,11 +514,14 @@ body {
             transition: .4s; 
             border-radius: 50%; 
         }
-        input:checked + .slider { 
-            background: linear-gradient(135deg, #667eea, #764ba2); 
+        input:checked + .slider {
+            background: linear-gradient(135deg, #667eea, #764ba2);
         }
-        input:checked + .slider:before { 
-            transform: translateX(24px); 
+        [data-theme="dark"] input:checked + .slider {
+            background: #0a84ff;
+        }
+        input:checked + .slider:before {
+            transform: translateX(24px);
         }
         
         /* Time Range Input */
@@ -533,7 +572,7 @@ body {
 
         /* 暗黑模式 checkbox 样式优化 */
         [data-theme="dark"] input[type="checkbox"] {
-            accent-color: #818cf8;
+            accent-color: #0a84ff;
         }
 
         .settings-display {
@@ -734,5 +773,5 @@ body {
             font-size: 12px;
         }
         [data-theme="dark"] .balance-display .balance-amount {
-            color: #6ee7a0;
+            color: #30d158;
         }
