@@ -36,6 +36,9 @@
                 <div class="header-content">
                     <h1>📊 Leaflow 自动签到控制面板</h1>
                     <div class="header-actions">
+                        <button class="btn btn-secondary btn-sm" onclick="showNotificationModal()" title="通知设置">
+                            <span>🔔</span>
+                        </button>
                         <button class="btn btn-secondary btn-sm theme-toggle" onclick="toggleTheme()" title="切换主题">
                             <span class="theme-icon">🌙</span>
                         </button>
@@ -65,8 +68,9 @@
 
             <div class="section">
                 <div class="section-header">
-                    <h2>📅 今日签到记录</h2>
+                    <h2>👥 账号管理</h2>
                     <div class="button-group">
+                        <button class="btn btn-success btn-sm" onclick="showAddAccountModal()">+ 添加账号</button>
                         <button class="btn btn-warning btn-sm" onclick="clearCheckinHistory('today')">清空今日记录</button>
                         <button class="btn btn-danger btn-sm" onclick="clearCheckinHistory('all')">清空所有记录</button>
                     </div>
@@ -75,14 +79,14 @@
                     <table class="table">
                         <thead>
                             <tr>
-                                <th>账号</th>
+                                <th>名称</th>
                                 <th>状态</th>
-                                <th>消息</th>
-                                <th>重试次数</th>
-                                <th>时间</th>
+                                <th>今日签到</th>
+                                <th>签到设置</th>
+                                <th>操作</th>
                             </tr>
                         </thead>
-                        <tbody id="todayCheckins">
+                        <tbody id="accountsList">
                             <tr>
                                 <td colspan="5" style="text-align: center; color: #a0aec0;">
                                     <div class="spinner"></div>
@@ -93,143 +97,6 @@
                 </div>
             </div>
 
-            <div class="section">
-                <div class="section-header">
-                    <h2>👥 账号管理</h2>
-                    <button class="btn btn-success btn-sm" onclick="showAddAccountModal()">+ 添加账号</button>
-                </div>
-                <div class="table-wrapper">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>名称</th>
-                                <th>状态</th>
-                                <th>签到时间段</th>
-                                <th>检查间隔</th>
-                                <th>重试次数</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="accountsList">
-                            <tr>
-                                <td colspan="6" style="text-align: center; color: #a0aec0;">
-                                    <div class="spinner"></div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="section">
-                <div class="section-header">
-                    <h2>🔔 通知设置</h2>
-                    <button class="btn btn-info btn-sm" onclick="testNotification()">测试通知</button>
-                </div>
-                
-                <div class="form-group">
-                    <div class="form-group-inline">
-                        <input type="checkbox" id="notifyEnabled">
-                        <label for="notifyEnabled" style="margin-bottom: 0;">启用通知功能</label>
-                    </div>
-                </div>
-                
-                <!-- Telegram通知设置 -->
-                <div class="notification-channel">
-                    <h4>📱 Telegram 通知设置</h4>
-                    <div class="channel-toggle">
-                        <input type="checkbox" id="telegramEnabled">
-                        <label for="telegramEnabled">启用 Telegram 通知</label>
-                    </div>
-                    <div class="form-group">
-                        <label>Bot Token</label>
-                        <input type="text" id="tgBotToken" placeholder="从 @BotFather 获取的 Bot Token">
-                    </div>
-                    <div class="form-group">
-                        <label>User ID</label>
-                        <input type="text" id="tgUserId" placeholder="接收通知的用户ID">
-                    </div>
-                    <div class="form-group">
-                        <label>API地址（可选）</label>
-                        <input type="text" id="telegramHost" placeholder="https://api.telegram.org">
-                        <div class="format-hint">留空使用默认地址</div>
-                    </div>
-                </div>
-                
-                <!-- 企业微信通知设置 -->
-                <div class="notification-channel">
-                    <h4>💼 企业微信通知设置</h4>
-                    <div class="channel-toggle">
-                        <input type="checkbox" id="wechatEnabled">
-                        <label for="wechatEnabled">启用企业微信通知</label>
-                    </div>
-                    <div class="form-group">
-                        <label>Webhook Key</label>
-                        <input type="text" id="wechatKey" placeholder="企业微信机器人的 Webhook Key">
-                    </div>
-                    <div class="form-group">
-                        <label>API地址（可选）</label>
-                        <input type="text" id="wechatHost" placeholder="https://qyapi.weixin.qq.com">
-                        <div class="format-hint">留空使用默认地址</div>
-                    </div>
-                </div>
-                
-                <!-- WxPusher通知设置 -->
-                <div class="notification-channel">
-                    <h4>📨 WxPusher 消息通知设置</h4>
-                    <div class="channel-toggle">
-                        <input type="checkbox" id="wxpusherEnabled">
-                        <label for="wxpusherEnabled">启用 WxPusher 通知</label>
-                    </div>
-                    <div class="form-group">
-                        <label>APP Token</label>
-                        <input type="text" id="wxpusherAppToken" placeholder="AT_xxx">
-                        <div class="format-hint">
-                            <a href="https://wxpusher.zjiecode.com/docs/#/" target="_blank" class="help-link">
-                                访问 WxPusher 文档获取 Token 和 UID
-                            </a>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>UID</label>
-                        <input type="text" id="wxpusherUid" placeholder="UID_xxx">
-                    </div>
-                    <div class="form-group">
-                        <label>API地址（可选）</label>
-                        <input type="text" id="wxpusherHost" placeholder="https://wxpusher.zjiecode.com">
-                        <div class="format-hint">留空使用默认地址</div>
-                    </div>
-                </div>
-                
-                <!-- 钉钉机器人通知设置 -->
-                <div class="notification-channel">
-                    <h4>🤖 钉钉机器人通知设置</h4>
-                    <div class="channel-toggle">
-                        <input type="checkbox" id="dingtalkEnabled">
-                        <label for="dingtalkEnabled">启用钉钉机器人通知</label>
-                    </div>
-                    <div class="form-group">
-                        <label>Access Token</label>
-                        <input type="text" id="dingtalkAccessToken" placeholder="机器人的 Access Token">
-                        <div class="format-hint">
-                            <a href="https://open.dingtalk.com/document/orgapp/obtain-the-webhook-address-of-a-custom-robot" target="_blank" class="help-link">
-                                获取钉钉机器人配置
-                            </a>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>加签密钥</label>
-                        <input type="text" id="dingtalkSecret" placeholder="安全设置中的加签密钥">
-                    </div>
-                    <div class="form-group">
-                        <label>API地址（可选）</label>
-                        <input type="text" id="dingtalkHost" placeholder="https://oapi.dingtalk.com">
-                        <div class="format-hint">留空使用默认地址</div>
-                    </div>
-                </div>
-                
-                <button class="btn" onclick="saveNotificationSettings()">保存通知设置</button>
-            </div>
         </div>
     </div>
 
@@ -284,23 +151,192 @@
     <div class="modal" id="editAccountModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>修改账号</h3>
+                <h3 id="editAccountTitle">修改账号</h3>
                 <button class="close" onclick="closeModal('editAccountModal')">&times;</button>
             </div>
             <div id="editAccountForm">
                 <input type="hidden" id="editAccountId">
                 <div class="form-group">
-                    <label>Cookie 数据</label>
-                    <textarea id="editTokenData" rows="6" placeholder='支持格式：
+                    <label>签到时间段（北京时间）</label>
+                    <div class="time-range-input">
+                        <input type="time" id="editCheckinTimeStart" value="06:30">
+                        <span>至</span>
+                        <input type="time" id="editCheckinTimeEnd" value="06:40">
+                    </div>
+                    <div class="format-hint">将在此时间段内随机执行签到</div>
+                </div>
+                <div class="form-group">
+                    <label>检查间隔（秒）</label>
+                    <input type="number" id="editCheckInterval" value="60" min="30" max="3600">
+                    <div class="format-hint">在时间段内每隔多少秒检查一次是否需要签到</div>
+                </div>
+                <div class="form-group">
+                    <label>重试次数</label>
+                    <input type="number" id="editRetryCount" value="2" min="0" max="5">
+                    <div class="format-hint">签到失败时的重试次数（0表示不重试）</div>
+                </div>
+                <div class="form-group">
+                    <label>Cookie 数据（留空则不修改）</label>
+                    <textarea id="editTokenData" rows="4" placeholder='支持格式：
 1. JSON格式: {"cookies": {"key": "value"}}
 2. 分号分隔: key1=value1; key2=value2
-3. 完整cookie: leaflow_session=xxx; remember_xxx=xxx; XSRF-TOKEN=xxx' required></textarea>
+3. 完整cookie: leaflow_session=xxx; remember_xxx=xxx; XSRF-TOKEN=xxx'></textarea>
                     <div class="format-hint">从浏览器开发者工具(F12) → Network → 请求头 → Cookie 复制</div>
                 </div>
                 <div style="display: flex; gap: 10px; margin-top: 20px;">
-                    <button type="button" class="btn btn-full" onclick="updateAccountCookie()">保存修改</button>
-                    <button type="button" class="btn btn-danger" onclick="closeModal('editAccountModal')">取消</button>
+                    <button type="button" class="btn btn-full" onclick="updateAccount()">保存修改</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('editAccountModal')">取消</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Checkin History Modal -->
+    <div class="modal" id="checkinHistoryModal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3 id="historyModalTitle">签到历史</h3>
+                <button class="close" onclick="closeModal('checkinHistoryModal')">&times;</button>
+            </div>
+            <input type="hidden" id="historyAccountId">
+            <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;"><input type="checkbox" id="selectAllHistory" onchange="toggleSelectAllHistory()"></th>
+                            <th>状态</th>
+                            <th>消息</th>
+                            <th>重试次数</th>
+                            <th>时间</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyList">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: #a0aec0;">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="button" class="btn btn-danger" onclick="deleteSelectedHistory()">删除选中</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('checkinHistoryModal')">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Settings Modal -->
+    <div class="modal" id="notificationModal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>🔔 通知设置</h3>
+                <button class="close" onclick="closeModal('notificationModal')">&times;</button>
+            </div>
+            <div class="modal-body-scroll">
+                <div class="form-group">
+                    <div class="form-group-inline">
+                        <input type="checkbox" id="notifyEnabled">
+                        <label for="notifyEnabled" style="margin-bottom: 0;">启用通知功能</label>
+                    </div>
+                </div>
+
+                <!-- Telegram通知设置 -->
+                <div class="notification-channel">
+                    <h4>📱 Telegram 通知设置</h4>
+                    <div class="channel-toggle">
+                        <input type="checkbox" id="telegramEnabled">
+                        <label for="telegramEnabled">启用 Telegram 通知</label>
+                    </div>
+                    <div class="form-group">
+                        <label>Bot Token</label>
+                        <input type="text" id="tgBotToken" placeholder="从 @BotFather 获取的 Bot Token">
+                    </div>
+                    <div class="form-group">
+                        <label>User ID</label>
+                        <input type="text" id="tgUserId" placeholder="接收通知的用户ID">
+                    </div>
+                    <div class="form-group">
+                        <label>API地址（可选）</label>
+                        <input type="text" id="telegramHost" placeholder="https://api.telegram.org">
+                        <div class="format-hint">留空使用默认地址</div>
+                    </div>
+                </div>
+
+                <!-- 企业微信通知设置 -->
+                <div class="notification-channel">
+                    <h4>💼 企业微信通知设置</h4>
+                    <div class="channel-toggle">
+                        <input type="checkbox" id="wechatEnabled">
+                        <label for="wechatEnabled">启用企业微信通知</label>
+                    </div>
+                    <div class="form-group">
+                        <label>Webhook Key</label>
+                        <input type="text" id="wechatKey" placeholder="企业微信机器人的 Webhook Key">
+                    </div>
+                    <div class="form-group">
+                        <label>API地址（可选）</label>
+                        <input type="text" id="wechatHost" placeholder="https://qyapi.weixin.qq.com">
+                        <div class="format-hint">留空使用默认地址</div>
+                    </div>
+                </div>
+
+                <!-- WxPusher通知设置 -->
+                <div class="notification-channel">
+                    <h4>📨 WxPusher 消息通知设置</h4>
+                    <div class="channel-toggle">
+                        <input type="checkbox" id="wxpusherEnabled">
+                        <label for="wxpusherEnabled">启用 WxPusher 通知</label>
+                    </div>
+                    <div class="form-group">
+                        <label>APP Token</label>
+                        <input type="text" id="wxpusherAppToken" placeholder="AT_xxx">
+                        <div class="format-hint">
+                            <a href="https://wxpusher.zjiecode.com/docs/#/" target="_blank" class="help-link">
+                                访问 WxPusher 文档获取 Token 和 UID
+                            </a>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>UID</label>
+                        <input type="text" id="wxpusherUid" placeholder="UID_xxx">
+                    </div>
+                    <div class="form-group">
+                        <label>API地址（可选）</label>
+                        <input type="text" id="wxpusherHost" placeholder="https://wxpusher.zjiecode.com">
+                        <div class="format-hint">留空使用默认地址</div>
+                    </div>
+                </div>
+
+                <!-- 钉钉机器人通知设置 -->
+                <div class="notification-channel">
+                    <h4>🤖 钉钉机器人通知设置</h4>
+                    <div class="channel-toggle">
+                        <input type="checkbox" id="dingtalkEnabled">
+                        <label for="dingtalkEnabled">启用钉钉机器人通知</label>
+                    </div>
+                    <div class="form-group">
+                        <label>Access Token</label>
+                        <input type="text" id="dingtalkAccessToken" placeholder="机器人的 Access Token">
+                        <div class="format-hint">
+                            <a href="https://open.dingtalk.com/document/orgapp/obtain-the-webhook-address-of-a-custom-robot" target="_blank" class="help-link">
+                                获取钉钉机器人配置
+                            </a>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>加签密钥</label>
+                        <input type="text" id="dingtalkSecret" placeholder="安全设置中的加签密钥">
+                    </div>
+                    <div class="form-group">
+                        <label>API地址（可选）</label>
+                        <input type="text" id="dingtalkHost" placeholder="https://oapi.dingtalk.com">
+                        <div class="format-hint">留空使用默认地址</div>
+                    </div>
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="button" class="btn btn-full" onclick="saveNotificationSettings()">保存设置</button>
+                <button type="button" class="btn btn-info" onclick="testNotification()">测试通知</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('notificationModal')">关闭</button>
             </div>
         </div>
     </div>

@@ -18,13 +18,27 @@ accounts_bp = Blueprint('accounts', __name__)
 @accounts_bp.route('/api/accounts', methods=['GET'])
 @token_required
 def get_accounts():
-    """Get all accounts"""
+    """Get all accounts with today's checkin info"""
+    from datetime import datetime
+    from config import TIMEZONE
+
     try:
+        today = datetime.now(TIMEZONE).date()
+
+        # 获取账号列表及今日签到信息
         accounts = db.fetchall('''
-            SELECT id, name, enabled, checkin_time_start, checkin_time_end,
-                   check_interval, retry_count, created_at
-            FROM accounts
-        ''')
+            SELECT a.id, a.name, a.enabled, a.checkin_time_start, a.checkin_time_end,
+                   a.check_interval, a.retry_count, a.created_at,
+                   ch.success as today_success, ch.message as today_message,
+                   ch.created_at as today_checkin_time
+            FROM accounts a
+            LEFT JOIN (
+                SELECT account_id, success, message, created_at,
+                       ROW_NUMBER() OVER (PARTITION BY account_id ORDER BY created_at DESC) as rn
+                FROM checkin_history
+                WHERE DATE(checkin_date) = DATE(?)
+            ) ch ON a.id = ch.account_id AND ch.rn = 1
+        ''', (today,))
         return jsonify(accounts or [])
     except Exception as e:
         logger.error(f"Get accounts error: {e}")
