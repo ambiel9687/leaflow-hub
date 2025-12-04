@@ -178,6 +178,9 @@ class CheckinScheduler:
                 ''', (current_date, account_id))
                 account_cache.refresh_from_db(db)
 
+                # 签到成功后刷新余额信息
+                self._refresh_balance_after_checkin(session, account_id, account['name'])
+
             logger.info(f"Check-in for {account['name']}: {'Success' if success else 'Failed'} - {message}")
 
             notification_title = f"Leaflow签到结果 - {account['name']}"
@@ -203,6 +206,42 @@ class CheckinScheduler:
                 pass
 
             return False
+
+    def _refresh_balance_after_checkin(self, session, account_id, account_name):
+        """签到成功后刷新余额（不影响签到流程）"""
+        try:
+            from .balance_service import BalanceService
+
+            success, result = BalanceService.fetch_balance_info(session)
+
+            if success:
+                db.execute('''
+                    UPDATE accounts SET
+                        leaflow_uid = ?,
+                        leaflow_name = ?,
+                        leaflow_email = ?,
+                        leaflow_created_at = ?,
+                        current_balance = ?,
+                        total_consumed = ?,
+                        balance_updated_at = ?
+                    WHERE id = ?
+                ''', (
+                    result['leaflow_uid'],
+                    result['leaflow_name'],
+                    result['leaflow_email'],
+                    result['leaflow_created_at'],
+                    result['current_balance'],
+                    result['total_consumed'],
+                    datetime.now(TIMEZONE),
+                    account_id
+                ))
+                logger.info(f"[{account_name}] Balance refreshed after checkin: {result['current_balance']}")
+            else:
+                logger.warning(f"[{account_name}] Balance refresh failed after checkin: {result}")
+
+        except Exception as e:
+            # 余额刷新失败不影响签到结果
+            logger.error(f"[{account_name}] Balance refresh error after checkin: {e}")
 
 
 # Initialize scheduler instance

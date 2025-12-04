@@ -284,13 +284,52 @@ body {
             font-size: 32px;
             font-weight: bold;
             color: var(--text-primary);
+        }
+        /* 统计卡片不同颜色 */
+        .stat-card .value-default {
             background: linear-gradient(135deg, #667eea, #764ba2);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
-        [data-theme="dark"] .stat-card .value {
+        .stat-card .value-info {
+            background: linear-gradient(135deg, #4299e1, #3182ce);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .stat-card .value-success {
+            background: linear-gradient(135deg, #48bb78, #38a169);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .stat-card .value-warning {
+            background: linear-gradient(135deg, #ed8936, #dd6b20);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        [data-theme="dark"] .stat-card .value-default {
             background: linear-gradient(135deg, #818cf8, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        [data-theme="dark"] .stat-card .value-info {
+            background: linear-gradient(135deg, #7dd3fc, #38bdf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        [data-theme="dark"] .stat-card .value-success {
+            background: linear-gradient(135deg, #6ee7a0, #4ade80);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        [data-theme="dark"] .stat-card .value-warning {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -661,4 +700,39 @@ body {
         }
         .help-link:hover {
             text-decoration: underline;
+        }
+
+        /* 基础信息展示 */
+        .info-display {
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .info-display .info-name {
+            color: var(--text-primary);
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 120px;
+        }
+        .info-display .info-sub {
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        /* 余额信息展示 */
+        .balance-display {
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .balance-display .balance-amount {
+            color: #48bb78;
+            font-weight: 600;
+        }
+        .balance-display .balance-consumed {
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+        [data-theme="dark"] .balance-display .balance-amount {
+            color: #6ee7a0;
         }

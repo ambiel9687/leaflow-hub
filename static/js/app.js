@@ -186,6 +186,19 @@
                 document.getElementById('activeAccounts').textContent = data.enabled_accounts || 0;
                 document.getElementById('totalCheckins').textContent = data.total_checkins || 0;
                 document.getElementById('successRate').textContent = (data.success_rate || 0) + '%';
+
+                const totalBalance = data.total_balance || 0;
+                const totalConsumed = data.total_consumed || 0;
+                const todayAmount = data.today_checkin_amount || 0;
+
+                document.getElementById('totalBalance').textContent = '¥' + totalBalance.toFixed(2);
+                document.getElementById('totalConsumed').textContent = '¥' + totalConsumed.toFixed(2);
+                document.getElementById('todayCheckinAmount').textContent = '¥' + todayAmount.toFixed(2);
+
+                // 计算使用率：总消费 / (总余额 + 总消费)
+                const totalAmount = totalBalance + totalConsumed;
+                const usageRate = totalAmount > 0 ? (totalConsumed / totalAmount * 100).toFixed(1) : 0;
+                document.getElementById('usageRate').textContent = usageRate + '%';
             } catch (error) {
                 console.error('Failed to load dashboard:', error);
             }
@@ -239,8 +252,55 @@
                             </div>
                         `;
 
+                        // 基础信息列
+                        let basicInfoHtml = '';
+                        if (account.leaflow_email) {
+                            const displayName = account.leaflow_name || account.name;
+                            const displayEmail = account.leaflow_email || '-';
+                            basicInfoHtml = `
+                                <div class="info-display">
+                                    <div class="info-name" title="${displayName}">${displayName}</div>
+                                    <div class="info-sub" title="${displayEmail}">${displayEmail}</div>
+                                </div>
+                            `;
+                        } else {
+                            basicInfoHtml = `<span class="badge badge-secondary">未获取</span>`;
+                        }
+
+                        // 余额信息列
+                        let balanceInfoHtml = '';
+                        if (account.current_balance) {
+                            const balance = parseFloat(account.current_balance).toFixed(2);
+                            const consumed = parseFloat(account.total_consumed || 0).toFixed(2);
+                            balanceInfoHtml = `
+                                <div class="balance-display">
+                                    <div class="balance-amount">余额: ¥${balance}</div>
+                                    <div class="balance-consumed">消费: ¥${consumed}</div>
+                                </div>
+                            `;
+                        } else {
+                            balanceInfoHtml = `<span class="badge badge-secondary">未获取</span>`;
+                        }
+
+                        // 名称列：展示 leaflow_uid 和创建时间距今天数
+                        let nameColumnHtml = '';
+                        if (account.leaflow_uid) {
+                            const daysAgo = calcDaysAgo(account.leaflow_created_at);
+                            const daysText = daysAgo !== null ? `${daysAgo} 天` : '-';
+                            nameColumnHtml = `
+                                <div class="info-display">
+                                    <div class="info-name">UID: ${account.leaflow_uid}</div>
+                                    <div class="info-sub">注册: ${daysText}</div>
+                                </div>
+                            `;
+                        } else {
+                            nameColumnHtml = `<span class="badge badge-secondary">${account.name}</span>`;
+                        }
+
                         tr.innerHTML = `
-                            <td>${account.name}</td>
+                            <td>${nameColumnHtml}</td>
+                            <td>${basicInfoHtml}</td>
+                            <td>${balanceInfoHtml}</td>
                             <td>
                                 <label class="switch">
                                     <input type="checkbox" ${account.enabled ? 'checked' : ''} onchange="toggleAccount(${account.id}, this.checked)">
@@ -250,6 +310,7 @@
                             <td>${todayCheckinHtml}</td>
                             <td>${settingsHtml}</td>
                             <td>
+                                <button class="btn btn-warning btn-sm" onclick="refreshBalance(${account.id})" title="刷新余额">刷新</button>
                                 <button class="btn btn-success btn-sm" onclick="manualCheckin(${account.id})">签到</button>
                                 <button class="btn btn-info btn-sm" onclick="showEditAccountModal(${account.id})">修改</button>
                                 <button class="btn btn-danger btn-sm" onclick="deleteAccount(${account.id})">删除</button>
@@ -258,7 +319,7 @@
                         tbody.appendChild(tr);
                     });
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #a0aec0;">暂无账号</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #a0aec0;">暂无账号</td></tr>';
                 }
             } catch (error) {
                 console.error('Failed to load accounts:', error);
@@ -318,7 +379,10 @@
                 try {
                     await apiCall(`/api/checkin/manual/${id}`, { method: 'POST' });
                     showToast('签到任务已触发', 'success');
-                    setTimeout(loadDashboard, 2000);
+                    setTimeout(() => {
+                        loadDashboard();
+                        loadAccounts();
+                    }, 2000);
                 } catch (error) {
                     showToast('操作失败', 'error');
                 }
@@ -594,6 +658,61 @@
                     closeModal(modalId);
                 }
             });
+        }
+
+        // 刷新单个账号余额
+        async function refreshBalance(accountId) {
+            try {
+                showToast('正在刷新余额...', 'info');
+
+                const result = await apiCall(`/api/accounts/${accountId}/refresh-balance`, {
+                    method: 'POST'
+                });
+
+                if (result && result.balance) {
+                    showToast(`余额刷新成功: ¥${parseFloat(result.balance.current_balance).toFixed(2)}`, 'success');
+                } else {
+                    showToast('余额刷新成功', 'success');
+                }
+                loadAccounts();
+            } catch (error) {
+                showToast('余额刷新失败: ' + error.message, 'error');
+            }
+        }
+
+        // 刷新所有账号余额
+        async function refreshAllBalances() {
+            if (!confirm('确定刷新所有启用账号的余额吗？')) {
+                return;
+            }
+
+            try {
+                showToast('正在刷新所有账号余额...', 'info');
+
+                const result = await apiCall('/api/accounts/refresh-all-balance', {
+                    method: 'POST'
+                });
+
+                if (result && result.results) {
+                    const { success, failed, total } = result.results;
+                    showToast(`余额刷新完成: ${success}/${total} 成功`, success === total ? 'success' : 'warning');
+                } else {
+                    showToast('余额刷新完成', 'success');
+                }
+                loadAccounts();
+            } catch (error) {
+                showToast('余额刷新失败: ' + error.message, 'error');
+            }
+        }
+
+        // 计算距离当前时间的天数
+        function calcDaysAgo(dateStr) {
+            if (!dateStr) return null;
+            const date = new Date(dateStr);
+            const now = new Date();
+            const diffTime = now - date;
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            return diffDays;
         }
 
         // 定期刷新dashboard数据

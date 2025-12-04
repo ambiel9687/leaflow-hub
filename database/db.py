@@ -281,7 +281,15 @@ class Database:
                         ("notification_settings", "dingtalk_enabled", "BOOLEAN DEFAULT FALSE"),
                         ("notification_settings", "dingtalk_access_token", "VARCHAR(255) DEFAULT ''"),
                         ("notification_settings", "dingtalk_secret", "VARCHAR(255) DEFAULT ''"),
-                        ("notification_settings", "dingtalk_host", "VARCHAR(255) DEFAULT ''")
+                        ("notification_settings", "dingtalk_host", "VARCHAR(255) DEFAULT ''"),
+                        # Leaflow balance info fields
+                        ("accounts", "leaflow_uid", "INT DEFAULT NULL"),
+                        ("accounts", "leaflow_name", "VARCHAR(255) DEFAULT ''"),
+                        ("accounts", "leaflow_email", "VARCHAR(255) DEFAULT ''"),
+                        ("accounts", "leaflow_created_at", "VARCHAR(50) DEFAULT ''"),
+                        ("accounts", "current_balance", "VARCHAR(50) DEFAULT ''"),
+                        ("accounts", "total_consumed", "VARCHAR(50) DEFAULT ''"),
+                        ("accounts", "balance_updated_at", "TIMESTAMP NULL DEFAULT NULL"),
                     ]
 
                     for table_name, field_name, field_type in new_fields:
@@ -342,6 +350,23 @@ class Database:
                             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                         )
                     ''')
+
+                    # SQLite: Add new fields if not exist
+                    sqlite_new_fields = [
+                        ("accounts", "leaflow_uid", "INTEGER DEFAULT NULL"),
+                        ("accounts", "leaflow_name", "TEXT DEFAULT ''"),
+                        ("accounts", "leaflow_email", "TEXT DEFAULT ''"),
+                        ("accounts", "leaflow_created_at", "TEXT DEFAULT ''"),
+                        ("accounts", "current_balance", "TEXT DEFAULT ''"),
+                        ("accounts", "total_consumed", "TEXT DEFAULT ''"),
+                        ("accounts", "balance_updated_at", "TIMESTAMP DEFAULT NULL"),
+                    ]
+
+                    for table_name, field_name, field_type in sqlite_new_fields:
+                        try:
+                            cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {field_name} {field_type}")
+                        except:
+                            pass
 
                 # Initialize notification settings
                 cursor.execute('SELECT COUNT(*) as cnt FROM notification_settings')

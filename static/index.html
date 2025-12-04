@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Leaflow Auto Check-in Control Panel</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍃</text></svg>">
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
@@ -34,7 +35,7 @@
         <div class="container">
             <div class="header">
                 <div class="header-content">
-                    <h1>📊 Leaflow 自动签到控制面板</h1>
+                    <h1>🍃 Leaflow 自动签到控制面板</h1>
                     <div class="header-actions">
                         <button class="btn btn-secondary btn-sm" onclick="showNotificationModal()" title="通知设置">
                             <span>🔔</span>
@@ -47,22 +48,43 @@
                 </div>
             </div>
 
+            <!-- 第一排：账号与签到统计 -->
             <div class="stats-grid">
                 <div class="stat-card">
                     <h3>账号总数</h3>
-                    <div class="value" id="totalAccounts">0</div>
+                    <div class="value value-default" id="totalAccounts">0</div>
                 </div>
                 <div class="stat-card">
                     <h3>活跃账号</h3>
-                    <div class="value" id="activeAccounts">0</div>
+                    <div class="value value-info" id="activeAccounts">0</div>
                 </div>
                 <div class="stat-card">
                     <h3>签到总数</h3>
-                    <div class="value" id="totalCheckins">0</div>
+                    <div class="value value-default" id="totalCheckins">0</div>
                 </div>
                 <div class="stat-card">
                     <h3>成功率</h3>
-                    <div class="value" id="successRate">0%</div>
+                    <div class="value value-success" id="successRate">0%</div>
+                </div>
+            </div>
+
+            <!-- 第二排：余额与消费统计 -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>总余额</h3>
+                    <div class="value value-success" id="totalBalance">¥0.00</div>
+                </div>
+                <div class="stat-card">
+                    <h3>总消费</h3>
+                    <div class="value value-warning" id="totalConsumed">¥0.00</div>
+                </div>
+                <div class="stat-card">
+                    <h3>使用率</h3>
+                    <div class="value value-info" id="usageRate">0%</div>
+                </div>
+                <div class="stat-card">
+                    <h3>今日签到</h3>
+                    <div class="value value-success" id="todayCheckinAmount">¥0.00</div>
                 </div>
             </div>
 
@@ -71,6 +93,7 @@
                     <h2>👥 账号管理</h2>
                     <div class="button-group">
                         <button class="btn btn-success btn-sm" onclick="showAddAccountModal()">+ 添加账号</button>
+                        <button class="btn btn-info btn-sm" onclick="refreshAllBalances()">刷新全部余额</button>
                         <button class="btn btn-warning btn-sm" onclick="clearCheckinHistory('today')">清空今日记录</button>
                         <button class="btn btn-danger btn-sm" onclick="clearCheckinHistory('all')">清空所有记录</button>
                     </div>
@@ -80,6 +103,8 @@
                         <thead>
                             <tr>
                                 <th>名称</th>
+                                <th>基础信息</th>
+                                <th>余额信息</th>
                                 <th>状态</th>
                                 <th>今日签到</th>
                                 <th>签到设置</th>
@@ -88,7 +113,7 @@
                         </thead>
                         <tbody id="accountsList">
                             <tr>
-                                <td colspan="5" style="text-align: center; color: #a0aec0;">
+                                <td colspan="7" style="text-align: center; color: #a0aec0;">
                                     <div class="spinner"></div>
                                 </td>
                             </tr>
