@@ -14,6 +14,12 @@ RUN apt-get update && apt-get install -y \
 # Copy project files
 COPY requirements.txt .
 COPY app.py .
+COPY config.py .
+COPY database/ database/
+COPY services/ services/
+COPY routes/ routes/
+COPY utils/ utils/
+COPY static/ static/
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
