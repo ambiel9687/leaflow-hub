@@ -1,11 +1,7 @@
 name: 构建推送 Docker 镜像到 GHCR
 
 on:
-  push:
-    branches: [ "main", "master" ]
-    tags: [ 'v*.*.*' ]
-  pull_request:
-    branches: [ "main", "master" ]
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
