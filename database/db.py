@@ -277,6 +277,21 @@ class Database:
                         )
                     ''')
 
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS redeem_history (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            account_id INT NOT NULL,
+                            code VARCHAR(100) NOT NULL,
+                            success BOOLEAN NOT NULL,
+                            message TEXT,
+                            amount VARCHAR(50) DEFAULT '',
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+                            INDEX idx_redeem_account (account_id),
+                            INDEX idx_redeem_time (created_at)
+                        )
+                    ''')
+
                     # Add new fields if not exist
                     new_fields = [
                         ("accounts", "retry_count", "INT DEFAULT 2"),
@@ -372,6 +387,22 @@ class Database:
                             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                         )
                     ''')
+
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS redeem_history (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            account_id INTEGER NOT NULL,
+                            code VARCHAR(100) NOT NULL,
+                            success BOOLEAN NOT NULL,
+                            message TEXT,
+                            amount VARCHAR(50) DEFAULT '',
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+                        )
+                    ''')
+
+                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_redeem_account ON redeem_history(account_id)')
+                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_redeem_time ON redeem_history(created_at)')
 
                     # SQLite: Add new fields if not exist
                     sqlite_new_fields = [

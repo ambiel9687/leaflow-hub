@@ -325,3 +325,77 @@ def refresh_all_balances():
 def get_refresh_progress():
     """获取刷新进度"""
     return jsonify(refresh_progress)
+
+
+@accounts_bp.route('/api/accounts/<int:account_id>/redeem', methods=['POST'])
+@token_required
+def redeem_code(account_id):
+    """为指定账号执行兑换码兑换"""
+    from services.redeem_service import RedeemService
+    from services.checkin_service import LeafLowCheckin
+
+    try:
+        data = request.get_json()
+        code = data.get('code', '').strip()
+
+        if not code:
+            return jsonify({'message': '请输入兑换码'}), 400
+
+        # 获取账号
+        account = db.fetchone('SELECT * FROM accounts WHERE id = ?', (account_id,))
+        if not account:
+            return jsonify({'message': '账号不存在'}), 404
+
+        # 创建 session 并执行兑换
+        token_data = json.loads(account['token_data'])
+        leaflow_checkin = LeafLowCheckin()
+        session = leaflow_checkin.create_session(token_data)
+
+        success, message = RedeemService.redeem_code(session, code)
+
+        # 提取金额并记录历史
+        amount = RedeemService.extract_amount(message) if success else ''
+
+        db.execute('''
+            INSERT INTO redeem_history (account_id, code, success, message, amount)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (account_id, code, success, message, amount))
+
+        if success:
+            logger.info(f"Account {account['name']} redeem success: {message}")
+            # 清除缓存以刷新余额显示
+            data_cache.invalidate()
+            return jsonify({
+                'success': True,
+                'message': message,
+                'amount': amount
+            })
+        else:
+            logger.warning(f"Account {account['name']} redeem failed: {message}")
+            return jsonify({
+                'success': False,
+                'message': message
+            }), 400
+
+    except Exception as e:
+        logger.error(f"Redeem code error: {e}")
+        return jsonify({'message': f'兑换失败: {str(e)}'}), 500
+
+
+@accounts_bp.route('/api/accounts/<int:account_id>/redeem-history', methods=['GET'])
+@token_required
+def get_redeem_history(account_id):
+    """获取账号的兑换历史"""
+    try:
+        history = db.fetchall('''
+            SELECT id, code, success, message, amount, created_at
+            FROM redeem_history
+            WHERE account_id = ?
+            ORDER BY created_at DESC
+            LIMIT 20
+        ''', (account_id,))
+        return jsonify(history or [])
+    except Exception as e:
+        logger.error(f"Get redeem history error: {e}")
+        return jsonify({'error': 'Failed to load redeem history'}), 500
+

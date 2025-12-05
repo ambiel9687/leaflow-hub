@@ -307,6 +307,9 @@
                             nameColumnHtml = `<span class="badge badge-secondary">${account.name}</span>`;
                         }
 
+                        // 转义账号名中的特殊字符
+                        const escapedName = account.name.replace(/'/g, "\\'").replace(/"/g, '\\"');
+
                         tr.innerHTML = `
                             <td>${nameColumnHtml}</td>
                             <td>${basicInfoHtml}</td>
@@ -321,6 +324,7 @@
                             <td>
                                 <button class="btn btn-warning btn-sm" onclick="refreshBalance(${account.id})" title="刷新余额">刷新</button>
                                 <button class="btn btn-success btn-sm" onclick="manualCheckin(${account.id})">签到</button>
+                                <button class="btn btn-primary btn-sm" onclick="showRedeemModal(${account.id}, '${escapedName}')">兑换</button>
                                 <button class="btn btn-info btn-sm" onclick="showEditAccountModal(${account.id})">修改</button>
                                 <button class="btn btn-danger btn-sm" onclick="deleteAccount(${account.id})">删除</button>
                             </td>
@@ -586,6 +590,11 @@
                 document.getElementById('historyAccountId').value = '';
                 document.getElementById('historyList').innerHTML = '';
                 document.getElementById('selectAllHistory').checked = false;
+            } else if (modalId === 'redeemModal') {
+                document.getElementById('redeemAccountId').value = '';
+                document.getElementById('redeemCode').value = '';
+                document.getElementById('redeemHistorySection').style.display = 'none';
+                document.getElementById('redeemHistoryList').innerHTML = '';
             }
         }
 
@@ -644,7 +653,7 @@
 
         // Close modal when clicking outside
         window.onclick = function(event) {
-            const modals = ['addAccountModal', 'editAccountModal', 'checkinHistoryModal', 'notificationModal', 'checkinSettingsModal'];
+            const modals = ['addAccountModal', 'editAccountModal', 'checkinHistoryModal', 'notificationModal', 'checkinSettingsModal', 'redeemModal'];
             modals.forEach(modalId => {
                 const modal = document.getElementById(modalId);
                 if (event.target == modal) {
@@ -781,3 +790,178 @@
                 loadDashboard();
             }
         }, 60000); // 每分钟刷新一次
+
+        // ========== 兑换码相关函数 ==========
+
+        // 显示兑换码弹窗
+        async function showRedeemModal(accountId, accountName) {
+            document.getElementById('redeemAccountId').value = accountId;
+            document.getElementById('redeemModalTitle').textContent = `🎁 ${accountName} - 兑换码`;
+            document.getElementById('redeemCode').value = '';
+            document.getElementById('redeemModal').style.display = 'flex';
+
+            // 加载兑换历史
+            await loadRedeemHistory(accountId);
+        }
+
+        // 兑换倒计时定时器
+        let redeemCountdownTimer = null;
+
+        // 格式化金额（去除尾部多余的0）
+        const formatAmount = (amount) => {
+            if (!amount) return '';
+            return parseFloat(amount).toString();
+        };
+
+        // 解析数据库时间（UTC）为 Date 对象
+        const parseDbTimeAsUTC = (dateStr) => {
+            if (!dateStr) return null;
+            // 数据库存储的是 UTC 时间，格式如 "2025-12-05 08:48:00"
+            // 需要添加 Z 后缀表示 UTC
+            const isoStr = dateStr.replace(' ', 'T') + 'Z';
+            const date = new Date(isoStr);
+            return isNaN(date.getTime()) ? null : date;
+        };
+
+        // 加载兑换历史
+        async function loadRedeemHistory(accountId) {
+            const historySection = document.getElementById('redeemHistorySection');
+            const historyList = document.getElementById('redeemHistoryList');
+            const countdownSection = document.getElementById('redeemCountdownSection');
+
+            // 清除之前的倒计时
+            if (redeemCountdownTimer) {
+                clearInterval(redeemCountdownTimer);
+                redeemCountdownTimer = null;
+            }
+
+            try {
+                const history = await apiCall(`/api/accounts/${accountId}/redeem-history`);
+
+                if (history && history.length > 0) {
+                    historySection.style.display = 'block';
+
+                    // 检查最近一小时内是否有成功兑换
+                    const now = new Date();
+                    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+                    const recentSuccess = history.find(record => {
+                        if (!record.success) return false;
+                        const recordTime = parseDbTimeAsUTC(record.created_at);
+                        return recordTime && recordTime > oneHourAgo;
+                    });
+
+                    // 显示倒计时
+                    if (recentSuccess && countdownSection) {
+                        const recordTime = parseDbTimeAsUTC(recentSuccess.created_at);
+                        const nextRedeemTime = new Date(recordTime.getTime() + 60 * 60 * 1000);
+
+                        const updateCountdown = () => {
+                            const remaining = nextRedeemTime.getTime() - new Date().getTime();
+                            if (remaining <= 0) {
+                                countdownSection.style.display = 'none';
+                                clearInterval(redeemCountdownTimer);
+                                redeemCountdownTimer = null;
+                            } else {
+                                const minutes = Math.floor(remaining / 60000);
+                                const seconds = Math.floor((remaining % 60000) / 1000);
+                                countdownSection.innerHTML = `<span style="color: var(--text-primary); font-size: 13px;">⏰ 下次可兑换: ${minutes}分${seconds}秒</span>`;
+                                countdownSection.style.display = 'block';
+                            }
+                        };
+
+                        updateCountdown();
+                        redeemCountdownTimer = setInterval(updateCountdown, 1000);
+                    } else if (countdownSection) {
+                        countdownSection.style.display = 'none';
+                    }
+
+                    // 格式化时间为北京时间（含年份）
+                    const formatBeijingTime = (dateStr) => {
+                        const date = parseDbTimeAsUTC(dateStr);
+                        if (!date) return dateStr || '-';
+                        return date.toLocaleString('zh-CN', {
+                            timeZone: 'Asia/Shanghai',
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        });
+                    };
+
+                    // 显示记录：兑换码 → 状态 → 金额/原因 → 时间
+                    historyList.innerHTML = history.slice(0, 5).map(record => {
+                        const statusClass = record.success ? 'badge-success' : 'badge-danger';
+                        const statusText = record.success ? '成功' : '失败';
+                        const resultText = record.success
+                            ? (record.amount ? `+¥${formatAmount(record.amount)}` : '')
+                            : (record.message || '');
+                        const time = formatBeijingTime(record.created_at);
+                        // 消息颜色使用 text-secondary 确保暗黑模式可见
+                        const resultColor = 'var(--text-secondary)';
+
+                        return `
+                            <div style="display: flex; flex-wrap: wrap; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border-color); font-size: 12px; gap: 6px;">
+                                <code style="background: var(--bg-secondary); color: var(--text-primary); padding: 2px 6px; border-radius: 4px; font-size: 11px;">${record.code}</code>
+                                <span class="badge ${statusClass}" style="font-size: 10px;">${statusText}</span>
+                                <span style="color: ${resultColor}; font-size: 11px; flex: 1;">${resultText}</span>
+                                <span style="color: var(--text-muted); font-size: 10px;">${time}</span>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    historySection.style.display = 'none';
+                    historyList.innerHTML = '';
+                    if (countdownSection) countdownSection.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Failed to load redeem history:', error);
+                historySection.style.display = 'none';
+                if (countdownSection) countdownSection.style.display = 'none';
+            }
+        }
+
+        // 提交兑换
+        async function submitRedeem() {
+            const btn = document.querySelector('#redeemForm .btn-full');
+            if (btn.disabled) return;
+
+            const accountId = document.getElementById('redeemAccountId').value;
+            const code = document.getElementById('redeemCode').value.trim();
+
+            if (!code) {
+                showToast('请输入兑换码', 'error');
+                return;
+            }
+
+            // 防抖：禁用按钮
+            btn.disabled = true;
+            btn.textContent = '兑换中...';
+
+            try {
+                const result = await apiCall(`/api/accounts/${accountId}/redeem`, {
+                    method: 'POST',
+                    body: JSON.stringify({ code: code })
+                });
+
+                if (result.success) {
+                    showToast(result.message, 'success');
+                    closeModal('redeemModal');
+                    // 刷新余额显示
+                    loadAccounts();
+                    loadDashboard();
+                } else {
+                    showToast(result.message || '兑换失败', 'error');
+                    // 刷新兑换历史
+                    await loadRedeemHistory(accountId);
+                }
+            } catch (error) {
+                showToast('兑换失败: ' + error.message, 'error');
+                // 刷新兑换历史
+                await loadRedeemHistory(accountId);
+            } finally {
+                // 恢复按钮状态
+                btn.disabled = false;
+                btn.textContent = '兑换';
+            }
+        }
