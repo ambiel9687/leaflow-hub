@@ -78,6 +78,12 @@
                     localStorage.setItem('authToken', authToken);
                     showToast('登录成功', 'success');
 
+                    // 移除防闪烁样式，让 JS 设置生效
+                    var antiFlickerStyle = document.getElementById('anti-flicker-style');
+                    if (antiFlickerStyle) {
+                        antiFlickerStyle.remove();
+                    }
+
                     document.getElementById('loginContainer').style.display = 'none';
                     document.getElementById('dashboard').style.display = 'block';
 
@@ -219,10 +225,6 @@
                 if (accounts && accounts.length > 0) {
                     accounts.forEach(account => {
                         const tr = document.createElement('tr');
-                        const interval = account.check_interval || 60;
-                        const retryCount = account.retry_count || 2;
-                        const timeStart = account.checkin_time_start || '06:30';
-                        const timeEnd = account.checkin_time_end || '06:40';
 
                         // 今日签到状态
                         let todayCheckinHtml = '';
@@ -243,14 +245,6 @@
                         } else {
                             todayCheckinHtml = `<span class="badge badge-secondary clickable" onclick="showCheckinHistory(${account.id}, '${account.name}')">未签到</span>`;
                         }
-
-                        // 签到设置展示
-                        const settingsHtml = `
-                            <div class="settings-display">
-                                <div>时段: ${timeStart} - ${timeEnd}</div>
-                                <div>间隔: ${interval}秒 / 重试: ${retryCount}次</div>
-                            </div>
-                        `;
 
                         // 基础信息列
                         let basicInfoHtml = '';
@@ -308,7 +302,6 @@
                                 </label>
                             </td>
                             <td>${todayCheckinHtml}</td>
-                            <td>${settingsHtml}</td>
                             <td>
                                 <button class="btn btn-warning btn-sm" onclick="refreshBalance(${account.id})" title="刷新余额">刷新</button>
                                 <button class="btn btn-success btn-sm" onclick="manualCheckin(${account.id})">签到</button>
@@ -319,7 +312,7 @@
                         tbody.appendChild(tr);
                     });
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #a0aec0;">暂无账号</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #a0aec0;">暂无账号</td></tr>';
                 }
             } catch (error) {
                 console.error('Failed to load accounts:', error);
@@ -560,10 +553,6 @@
 
             document.getElementById('editAccountId').value = accountId;
             document.getElementById('editAccountTitle').textContent = `修改账号 - ${account.name}`;
-            document.getElementById('editCheckinTimeStart').value = account.checkin_time_start || '06:30';
-            document.getElementById('editCheckinTimeEnd').value = account.checkin_time_end || '06:40';
-            document.getElementById('editCheckInterval').value = account.check_interval || 60;
-            document.getElementById('editRetryCount').value = account.retry_count || 2;
             document.getElementById('editTokenData').value = '';
             document.getElementById('editAccountModal').style.display = 'flex';
         }
@@ -573,17 +562,9 @@
 
             if (modalId === 'addAccountModal') {
                 document.getElementById('accountName').value = '';
-                document.getElementById('checkinTimeStart').value = '06:30';
-                document.getElementById('checkinTimeEnd').value = '06:40';
-                document.getElementById('checkInterval').value = '60';
-                document.getElementById('retryCount').value = '2';
                 document.getElementById('tokenData').value = '';
             } else if (modalId === 'editAccountModal') {
                 document.getElementById('editAccountId').value = '';
-                document.getElementById('editCheckinTimeStart').value = '06:30';
-                document.getElementById('editCheckinTimeEnd').value = '06:40';
-                document.getElementById('editCheckInterval').value = '60';
-                document.getElementById('editRetryCount').value = '2';
                 document.getElementById('editTokenData').value = '';
             } else if (modalId === 'checkinHistoryModal') {
                 document.getElementById('historyAccountId').value = '';
@@ -596,10 +577,6 @@
             try {
                 const account = {
                     name: document.getElementById('accountName').value,
-                    checkin_time_start: document.getElementById('checkinTimeStart').value,
-                    checkin_time_end: document.getElementById('checkinTimeEnd').value,
-                    check_interval: parseInt(document.getElementById('checkInterval').value),
-                    retry_count: parseInt(document.getElementById('retryCount').value),
                     token_data: document.getElementById('tokenData').value
                 };
 
@@ -612,7 +589,7 @@
                     method: 'POST',
                     body: JSON.stringify(account)
                 });
-                
+
                 showToast('账号添加成功', 'success');
                 closeModal('addAccountModal');
                 loadAccounts();
@@ -624,16 +601,16 @@
         async function updateAccount() {
             try {
                 const accountId = document.getElementById('editAccountId').value;
-                const data = {
-                    checkin_time_start: document.getElementById('editCheckinTimeStart').value,
-                    checkin_time_end: document.getElementById('editCheckinTimeEnd').value,
-                    check_interval: parseInt(document.getElementById('editCheckInterval').value),
-                    retry_count: parseInt(document.getElementById('editRetryCount').value)
-                };
+                const data = {};
 
                 const tokenData = document.getElementById('editTokenData').value.trim();
                 if (tokenData) {
                     data.token_data = tokenData;
+                }
+
+                if (Object.keys(data).length === 0) {
+                    showToast('请输入新的 Cookie 数据', 'warning');
+                    return;
                 }
 
                 await apiCall(`/api/accounts/${accountId}`, {
@@ -651,13 +628,59 @@
 
         // Close modal when clicking outside
         window.onclick = function(event) {
-            const modals = ['addAccountModal', 'editAccountModal', 'checkinHistoryModal', 'notificationModal'];
+            const modals = ['addAccountModal', 'editAccountModal', 'checkinHistoryModal', 'notificationModal', 'checkinSettingsModal'];
             modals.forEach(modalId => {
                 const modal = document.getElementById(modalId);
                 if (event.target == modal) {
                     closeModal(modalId);
                 }
             });
+        }
+
+        // 签到设置相关函数
+        function showCheckinSettingsModal() {
+            document.getElementById('checkinSettingsModal').style.display = 'flex';
+            loadCheckinSettings();
+        }
+
+        async function loadCheckinSettings() {
+            try {
+                const settings = await apiCall('/api/checkin-settings');
+                if (!settings) return;
+
+                document.getElementById('globalCheckinTime').value = settings.checkin_time || '05:30';
+                document.getElementById('globalRetryCount').value = settings.retry_count || 2;
+                document.getElementById('globalRandomDelayMin').value = settings.random_delay_min || 0;
+                document.getElementById('globalRandomDelayMax').value = settings.random_delay_max || 30;
+            } catch (error) {
+                console.error('Failed to load checkin settings:', error);
+            }
+        }
+
+        async function saveCheckinSettings() {
+            try {
+                const settings = {
+                    checkin_time: document.getElementById('globalCheckinTime').value,
+                    retry_count: parseInt(document.getElementById('globalRetryCount').value),
+                    random_delay_min: parseInt(document.getElementById('globalRandomDelayMin').value),
+                    random_delay_max: parseInt(document.getElementById('globalRandomDelayMax').value)
+                };
+
+                // 前端验证
+                if (settings.random_delay_min > settings.random_delay_max) {
+                    showToast('随机延迟最小值不能大于最大值', 'error');
+                    return;
+                }
+
+                await apiCall('/api/checkin-settings', {
+                    method: 'PUT',
+                    body: JSON.stringify(settings)
+                });
+                showToast('签到设置保存成功', 'success');
+                closeModal('checkinSettingsModal');
+            } catch (error) {
+                showToast('保存失败: ' + error.message, 'error');
+            }
         }
 
         // 刷新单个账号余额

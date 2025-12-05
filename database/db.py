@@ -266,6 +266,17 @@ class Database:
                         )
                     ''')
 
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS checkin_settings (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            checkin_time VARCHAR(5) DEFAULT '05:30',
+                            retry_count INT DEFAULT 2,
+                            random_delay_min INT DEFAULT 0,
+                            random_delay_max INT DEFAULT 30,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                        )
+                    ''')
+
                     # Add new fields if not exist
                     new_fields = [
                         ("accounts", "retry_count", "INT DEFAULT 2"),
@@ -351,6 +362,17 @@ class Database:
                         )
                     ''')
 
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS checkin_settings (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            checkin_time VARCHAR(5) DEFAULT '05:30',
+                            retry_count INTEGER DEFAULT 2,
+                            random_delay_min INTEGER DEFAULT 0,
+                            random_delay_max INTEGER DEFAULT 30,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    ''')
+
                     # SQLite: Add new fields if not exist
                     sqlite_new_fields = [
                         ("accounts", "leaflow_uid", "INTEGER DEFAULT NULL"),
@@ -387,6 +409,30 @@ class Database:
                         cursor.execute('''
                             INSERT INTO notification_settings
                             (enabled) VALUES (0)
+                        ''')
+                        self.conn.commit()
+
+                # Initialize checkin settings
+                cursor.execute('SELECT COUNT(*) as cnt FROM checkin_settings')
+                result = cursor.fetchone()
+
+                if self.db_type == 'mysql':
+                    checkin_count = result[0] if result else 0
+                else:
+                    checkin_count = result['cnt'] if result else 0
+
+                if checkin_count == 0:
+                    if self.db_type == 'mysql':
+                        cursor.execute('''
+                            INSERT INTO checkin_settings
+                            (checkin_time, retry_count, random_delay_min, random_delay_max)
+                            VALUES ('05:30', 2, 0, 30)
+                        ''')
+                    else:
+                        cursor.execute('''
+                            INSERT INTO checkin_settings
+                            (checkin_time, retry_count, random_delay_min, random_delay_max)
+                            VALUES ('05:30', 2, 0, 30)
                         ''')
                         self.conn.commit()
 

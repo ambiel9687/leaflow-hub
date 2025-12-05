@@ -15,6 +15,7 @@
         (function() {
             var hasToken = !!localStorage.getItem('authToken');
             var style = document.createElement('style');
+            style.id = 'anti-flicker-style';
             style.textContent = hasToken
                 ? '.login-container{display:none!important}.dashboard{display:block!important;visibility:visible!important}'
                 : '.login-container{display:flex!important;visibility:visible!important}.dashboard{display:none!important}';
@@ -52,6 +53,9 @@
                 <div class="header-content">
                     <h1>🍃 Leaflow 自动签到控制面板</h1>
                     <div class="header-actions">
+                        <button class="btn btn-secondary btn-sm" onclick="showCheckinSettingsModal()" title="签到设置">
+                            <span>⏰</span>
+                        </button>
                         <button class="btn btn-secondary btn-sm" onclick="showNotificationModal()" title="通知设置">
                             <span>🔔</span>
                         </button>
@@ -122,13 +126,12 @@
                                 <th>余额信息</th>
                                 <th>状态</th>
                                 <th>今日签到</th>
-                                <th>签到设置</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
                         <tbody id="accountsList">
                             <tr>
-                                <td colspan="7" style="text-align: center; color: #a0aec0;">
+                                <td colspan="6" style="text-align: center; color: #a0aec0;">
                                     <div class="spinner"></div>
                                 </td>
                             </tr>
@@ -151,25 +154,6 @@
                 <div class="form-group">
                     <label>账号名称</label>
                     <input type="text" id="accountName" required>
-                </div>
-                <div class="form-group">
-                    <label>签到时间段（北京时间）</label>
-                    <div class="time-range-input">
-                        <input type="time" id="checkinTimeStart" value="06:30" required>
-                        <span>至</span>
-                        <input type="time" id="checkinTimeEnd" value="06:40" required>
-                    </div>
-                    <div class="format-hint">将在此时间段内随机执行签到</div>
-                </div>
-                <div class="form-group">
-                    <label>检查间隔（秒）</label>
-                    <input type="number" id="checkInterval" value="60" min="30" max="3600" required>
-                    <div class="format-hint">在时间段内每隔多少秒检查一次是否需要签到</div>
-                </div>
-                <div class="form-group">
-                    <label>重试次数</label>
-                    <input type="number" id="retryCount" value="2" min="0" max="5" required>
-                    <div class="format-hint">签到失败时的重试次数（0表示不重试）</div>
                 </div>
                 <div class="form-group">
                     <label>Cookie 数据</label>
@@ -196,25 +180,6 @@
             </div>
             <div id="editAccountForm">
                 <input type="hidden" id="editAccountId">
-                <div class="form-group">
-                    <label>签到时间段（北京时间）</label>
-                    <div class="time-range-input">
-                        <input type="time" id="editCheckinTimeStart" value="06:30">
-                        <span>至</span>
-                        <input type="time" id="editCheckinTimeEnd" value="06:40">
-                    </div>
-                    <div class="format-hint">将在此时间段内随机执行签到</div>
-                </div>
-                <div class="form-group">
-                    <label>检查间隔（秒）</label>
-                    <input type="number" id="editCheckInterval" value="60" min="30" max="3600">
-                    <div class="format-hint">在时间段内每隔多少秒检查一次是否需要签到</div>
-                </div>
-                <div class="form-group">
-                    <label>重试次数</label>
-                    <input type="number" id="editRetryCount" value="2" min="0" max="5">
-                    <div class="format-hint">签到失败时的重试次数（0表示不重试）</div>
-                </div>
                 <div class="form-group">
                     <label>Cookie 数据（留空则不修改）</label>
                     <textarea id="editTokenData" rows="4" placeholder='支持格式：
@@ -377,6 +342,41 @@
                 <button type="button" class="btn btn-full" onclick="saveNotificationSettings()">保存设置</button>
                 <button type="button" class="btn btn-info" onclick="testNotification()">测试通知</button>
                 <button type="button" class="btn btn-secondary" onclick="closeModal('notificationModal')">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Checkin Settings Modal -->
+    <div class="modal" id="checkinSettingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>⏰ 签到设置</h3>
+                <button class="close" onclick="closeModal('checkinSettingsModal')">&times;</button>
+            </div>
+            <div class="modal-body-scroll">
+                <div class="form-group">
+                    <label>签到时间（北京时间）</label>
+                    <input type="time" id="globalCheckinTime" value="05:30" required>
+                    <div class="format-hint">到达此时间后开始执行签到</div>
+                </div>
+                <div class="form-group">
+                    <label>重试次数</label>
+                    <input type="number" id="globalRetryCount" value="2" min="0" max="5" required>
+                    <div class="format-hint">签到失败时的重试次数（0表示不重试）</div>
+                </div>
+                <div class="form-group">
+                    <label>随机延迟范围（秒）</label>
+                    <div class="time-range-input">
+                        <input type="number" id="globalRandomDelayMin" value="0" min="0" max="300" required>
+                        <span>至</span>
+                        <input type="number" id="globalRandomDelayMax" value="30" min="0" max="300" required>
+                    </div>
+                    <div class="format-hint">每个账号签到前的随机延迟时间，避免同时发起请求</div>
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="button" class="btn btn-full" onclick="saveCheckinSettings()">保存设置</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('checkinSettingsModal')">关闭</button>
             </div>
         </div>
     </div>

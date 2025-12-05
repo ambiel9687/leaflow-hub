@@ -68,10 +68,6 @@ def add_account():
         data = request.get_json()
         name = data.get('name')
         cookie_input = data.get('token_data', data.get('cookie_data', ''))
-        checkin_time_start = data.get('checkin_time_start', '06:30')
-        checkin_time_end = data.get('checkin_time_end', '06:40')
-        check_interval = data.get('check_interval', 60)
-        retry_count = data.get('retry_count', 2)
 
         if not name or not cookie_input:
             return jsonify({'message': 'Name and cookie data are required'}), 400
@@ -82,9 +78,9 @@ def add_account():
             token_data = cookie_input
 
         db.execute('''
-            INSERT INTO accounts (name, token_data, checkin_time_start, checkin_time_end, check_interval, retry_count)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (name, json.dumps(token_data), checkin_time_start, checkin_time_end, check_interval, retry_count))
+            INSERT INTO accounts (name, token_data)
+            VALUES (?, ?)
+        ''', (name, json.dumps(token_data)))
 
         account_cache.refresh_from_db(db)
         data_cache.invalidate()
@@ -113,22 +109,6 @@ def update_account(account_id):
         if 'enabled' in data:
             updates.append('enabled = ?')
             params.append(1 if data['enabled'] else 0)
-
-        if 'checkin_time_start' in data:
-            updates.append('checkin_time_start = ?')
-            params.append(data['checkin_time_start'])
-
-        if 'checkin_time_end' in data:
-            updates.append('checkin_time_end = ?')
-            params.append(data['checkin_time_end'])
-
-        if 'check_interval' in data:
-            updates.append('check_interval = ?')
-            params.append(data['check_interval'])
-
-        if 'retry_count' in data:
-            updates.append('retry_count = ?')
-            params.append(data['retry_count'])
 
         if 'token_data' in data or 'cookie_data' in data:
             cookie_input = data.get('token_data', data.get('cookie_data', ''))

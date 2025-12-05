@@ -25,6 +25,29 @@ class CheckinScheduler:
         self.running = False
         self.leaflow_checkin = LeafLowCheckin()
         self.checkin_tasks = {}
+        self._cached_settings = None
+        self._settings_cache_time = None
+
+    def _get_checkin_settings(self):
+        """Get global checkin settings with cache"""
+        now = time.time()
+        # Cache settings for 60 seconds
+        if self._cached_settings and self._settings_cache_time and (now - self._settings_cache_time) < 60:
+            return self._cached_settings
+
+        settings = db.fetchone('SELECT * FROM checkin_settings WHERE id = 1')
+        if settings:
+            self._cached_settings = settings
+            self._settings_cache_time = now
+            return settings
+
+        # Return default settings
+        return {
+            'checkin_time': '05:30',
+            'retry_count': 2,
+            'random_delay_min': 0,
+            'random_delay_max': 30
+        }
 
     def start(self):
         """Start the scheduler"""
@@ -68,17 +91,14 @@ class CheckinScheduler:
                             if last_checkin_date == current_date:
                                 continue
 
-                        start_time_str = account.get('checkin_time_start', '06:30')
-                        end_time_str = account.get('checkin_time_end', '06:40')
-                        check_interval = account.get('check_interval', 60)
+                        # Use global checkin settings
+                        settings = self._get_checkin_settings()
+                        checkin_time_str = settings.get('checkin_time', '05:30')
+                        checkin_hour, checkin_minute = map(int, checkin_time_str.split(':'))
+                        checkin_time = now.replace(hour=checkin_hour, minute=checkin_minute, second=0, microsecond=0)
 
-                        start_hour, start_minute = map(int, start_time_str.split(':'))
-                        end_hour, end_minute = map(int, end_time_str.split(':'))
-
-                        start_time = now.replace(hour=start_hour, minute=start_minute, second=0, microsecond=0)
-                        end_time = now.replace(hour=end_hour, minute=end_minute, second=59, microsecond=999999)
-
-                        if start_time <= now <= end_time:
+                        # Check if current time is past the checkin time
+                        if now >= checkin_time:
                             task_key = f"{account_id}_{current_date}"
 
                             if task_key not in self.checkin_tasks:
@@ -90,15 +110,14 @@ class CheckinScheduler:
 
                             task = self.checkin_tasks[task_key]
 
-                            if not task['completed']:
-                                if task['last_check'] is None or \
-                                   (now - task['last_check']).total_seconds() >= check_interval:
-                                    task['last_check'] = now
-                                    threading.Thread(
-                                        target=self.perform_checkin_with_delay,
-                                        args=(account_id, task_key),
-                                        daemon=True
-                                    ).start()
+                            # Only trigger once per day (no check_interval needed)
+                            if not task['completed'] and task['last_check'] is None:
+                                task['last_check'] = now
+                                threading.Thread(
+                                    target=self.perform_checkin_with_delay,
+                                    args=(account_id, task_key),
+                                    daemon=True
+                                ).start()
                     except Exception as e:
                         logger.error(f"Error processing account {account.get('id', 'unknown')}: {e}")
                         continue
@@ -119,7 +138,12 @@ class CheckinScheduler:
     def perform_checkin_with_delay(self, account_id, task_key):
         """Perform check-in with random delay"""
         try:
-            delay = random.randint(0, 30)
+            # Use global settings for random delay
+            settings = self._get_checkin_settings()
+            delay_min = settings.get('random_delay_min', 0)
+            delay_max = settings.get('random_delay_max', 30)
+            delay = random.randint(delay_min, delay_max)
+            logger.info(f"Account {account_id} waiting {delay}s before checkin (range: {delay_min}-{delay_max}s)")
             time.sleep(delay)
 
             success = self.perform_checkin(account_id)
@@ -160,7 +184,9 @@ class CheckinScheduler:
             else:
                 success, message = self.leaflow_checkin.perform_checkin(session, account['name'])
 
-            retry_count = account.get('retry_count', 2)
+            # Use global settings for retry count
+            settings = self._get_checkin_settings()
+            retry_count = settings.get('retry_count', 2)
             if not success and retry_attempt < retry_count:
                 logger.info(f"Retrying checkin for {account['name']} (attempt {retry_attempt + 1}/{retry_count})")
                 time.sleep(5)
