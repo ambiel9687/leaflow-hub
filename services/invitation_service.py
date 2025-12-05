@@ -408,9 +408,9 @@ class InvitationService:
             result.append({
                 'id': row.get('leaflow_id') or row.get('id'),
                 'code': row.get('code'),
-                'max_uses': row.get('max_uses', 1),
-                'used_count': row.get('used_count', 0),
-                'remaining_uses': row.get('remaining_uses', 1),
+                'max_uses': row.get('max_uses') or 1,
+                'used_count': row.get('used_count') or 0,
+                'remaining_uses': row.get('remaining_uses') or 1,
                 'is_active': bool(row.get('is_active', 1)),
                 'is_available': bool(row.get('is_available', 1)),
                 'note': row.get('note', ''),
@@ -430,8 +430,8 @@ class InvitationService:
         """
         total = len(codes)
         active = sum(1 for c in codes if c.get('is_active', True))
-        available = sum(1 for c in codes if c.get('is_available', True) and c.get('remaining_uses', 0) > 0)
-        total_uses = sum(c.get('used_count', 0) for c in codes)
+        available = sum(1 for c in codes if c.get('is_available', True) and (c.get('remaining_uses') or 0) > 0)
+        total_uses = sum(c.get('used_count') or 0 for c in codes)
 
         return {
             'total': total,

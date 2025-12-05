@@ -27,6 +27,9 @@ class CheckinScheduler:
         self.checkin_tasks = {}
         self._cached_settings = None
         self._settings_cache_time = None
+        # 余额定时刷新配置
+        self.last_balance_refresh = None  # 上次刷新时间戳
+        self.balance_refresh_interval = 2 * 60 * 60  # 2小时（秒）
 
     def _get_checkin_settings(self):
         """Get global checkin settings with cache"""
@@ -128,6 +131,9 @@ class CheckinScheduler:
                         expired_keys.append(key)
                 for key in expired_keys:
                     del self.checkin_tasks[key]
+
+                # 每2小时刷新所有账号余额
+                self._periodic_balance_refresh()
 
             except Exception as e:
                 logger.error(f"Scheduler error: {e}")
@@ -237,37 +243,65 @@ class CheckinScheduler:
         """签到成功后刷新余额（不影响签到流程）"""
         try:
             from .balance_service import BalanceService
-
-            success, result = BalanceService.fetch_balance_info(session)
-
-            if success:
-                db.execute('''
-                    UPDATE accounts SET
-                        leaflow_uid = ?,
-                        leaflow_name = ?,
-                        leaflow_email = ?,
-                        leaflow_created_at = ?,
-                        current_balance = ?,
-                        total_consumed = ?,
-                        balance_updated_at = ?
-                    WHERE id = ?
-                ''', (
-                    result['leaflow_uid'],
-                    result['leaflow_name'],
-                    result['leaflow_email'],
-                    result['leaflow_created_at'],
-                    result['current_balance'],
-                    result['total_consumed'],
-                    datetime.now(TIMEZONE),
-                    account_id
-                ))
-                logger.info(f"[{account_name}] Balance refreshed after checkin: {result['current_balance']}")
-            else:
-                logger.warning(f"[{account_name}] Balance refresh failed after checkin: {result}")
-
+            BalanceService.refresh_account_balance(db, session, account_id, account_name)
         except Exception as e:
             # 余额刷新失败不影响签到结果
             logger.error(f"[{account_name}] Balance refresh error after checkin: {e}")
+
+    def _periodic_balance_refresh(self):
+        """定期刷新所有账号余额（每2小时）"""
+        now = time.time()
+
+        # 检查是否到达刷新时间
+        if self.last_balance_refresh and (now - self.last_balance_refresh) < self.balance_refresh_interval:
+            return
+
+        self.last_balance_refresh = now
+        logger.info("Starting periodic balance refresh for all accounts...")
+
+        # 在后台线程中执行，避免阻塞主调度器
+        threading.Thread(target=self._refresh_all_balances, daemon=True).start()
+
+    def _refresh_all_balances(self):
+        """刷新所有启用账号的余额"""
+        from .balance_service import BalanceService
+
+        try:
+            accounts = db.fetchall('SELECT * FROM accounts WHERE enabled = 1')
+
+            if not accounts:
+                logger.info("No enabled accounts to refresh balance")
+                return
+
+            success_count = 0
+            fail_count = 0
+
+            for account in accounts:
+                try:
+                    token_data = json.loads(account['token_data'])
+                    session = self.leaflow_checkin.create_session(token_data)
+
+                    success, _ = BalanceService.refresh_account_balance(
+                        db, session, account['id'], account['name']
+                    )
+
+                    if success:
+                        success_count += 1
+                    else:
+                        fail_count += 1
+
+                    # 每个账号间随机等待 500-1500ms，避免请求过快
+                    time.sleep(random.uniform(0.5, 1.5))
+
+                except Exception as e:
+                    fail_count += 1
+                    logger.error(f"Refresh balance error for {account['name']}: {e}")
+
+            logger.info(f"Periodic balance refresh completed: {success_count} success, {fail_count} failed")
+
+        except Exception as e:
+            logger.error(f"Refresh all balances error: {e}")
+            logger.error(traceback.format_exc())
 
 
 # Initialize scheduler instance

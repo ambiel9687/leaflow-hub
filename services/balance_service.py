@@ -99,3 +99,54 @@ class BalanceService:
         except Exception as e:
             logger.error(f"Parse balance data error: {e}")
             return False, str(e)
+
+    @staticmethod
+    def refresh_account_balance(db, session, account_id, account_name):
+        """
+        刷新账户余额并更新数据库（公共方法）
+
+        Args:
+            db: 数据库实例
+            session: 已认证的 requests.Session 对象
+            account_id: 账户 ID
+            account_name: 账户名称（用于日志）
+
+        Returns:
+            tuple: (success: bool, message: str)
+        """
+        from datetime import datetime
+        from config import TIMEZONE
+
+        try:
+            success, result = BalanceService.fetch_balance_info(session)
+
+            if success:
+                db.execute('''
+                    UPDATE accounts SET
+                        leaflow_uid = ?,
+                        leaflow_name = ?,
+                        leaflow_email = ?,
+                        leaflow_created_at = ?,
+                        current_balance = ?,
+                        total_consumed = ?,
+                        balance_updated_at = ?
+                    WHERE id = ?
+                ''', (
+                    result['leaflow_uid'],
+                    result['leaflow_name'],
+                    result['leaflow_email'],
+                    result['leaflow_created_at'],
+                    result['current_balance'],
+                    result['total_consumed'],
+                    datetime.now(TIMEZONE),
+                    account_id
+                ))
+                logger.info(f"[{account_name}] Balance refreshed: {result['current_balance']}")
+                return True, result['current_balance']
+            else:
+                logger.warning(f"[{account_name}] Balance refresh failed: {result}")
+                return False, result
+
+        except Exception as e:
+            logger.error(f"[{account_name}] Balance refresh error: {e}")
+            return False, str(e)

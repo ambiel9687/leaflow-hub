@@ -363,6 +363,9 @@ def redeem_code(account_id):
 
         if success:
             logger.info(f"Account {account['name']} redeem success: {message}")
+            # 兑换成功后刷新余额
+            from services.balance_service import BalanceService
+            BalanceService.refresh_account_balance(db, session, account_id, account['name'])
             # 清除缓存以刷新余额显示
             data_cache.invalidate()
             return jsonify({
@@ -592,6 +595,9 @@ def create_invitation_code(account_id):
             logger.info(f"Account {account['name']} created invitation code: {result.get('code')}")
             # 保存到数据库缓存
             InvitationService.save_single_code(db, account_id, result)
+            # 创建邀请码后刷新余额（邀请码消耗余额）
+            from services.balance_service import BalanceService
+            BalanceService.refresh_account_balance(db, session, account_id, account['name'])
             return jsonify({
                 'success': True,
                 'code': result
