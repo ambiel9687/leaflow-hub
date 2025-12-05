@@ -2,14 +2,14 @@
 
 /* 主题变量 - 明亮主题 */
 :root {
-    --bg-gradient-start: #f7fafc;
-    --bg-gradient-end: #edf2f7;
-    --bg-primary: #f7fafc;
-    --bg-secondary: white;
-    --bg-tertiary: #f8f9fa;
-    --bg-hover: #f7fafc;
-    --text-primary: #2d3748;
-    --text-secondary: #4a5568;
+    --bg-gradient-start: #f0f2f5;
+    --bg-gradient-end: #e4e8ed;
+    --bg-primary: #f0f2f5;
+    --bg-secondary: #fafafa;
+    --bg-tertiary: #f0f0f0;
+    --bg-hover: #e8eaed;
+    --text-primary: #374151;
+    --text-secondary: #6b7280;
     --text-muted: #718096;
     --text-placeholder: #a0aec0;
     --border-color: #e2e8f0;
@@ -17,41 +17,41 @@
     --shadow-color: rgba(0,0,0,0.08);
     --shadow-hover: rgba(0,0,0,0.12);
     --modal-bg: rgba(0,0,0,0.6);
-    --toast-bg: white;
+    --toast-bg: #fafafa;
     --toast-shadow: rgba(0,0,0,0.15);
     --switch-bg: #cbd5e0;
     --spinner-bg: #f3f3f3;
 }
 
-/* 暗色主题 - Apple HIG + Material Design */
+/* 暗色主题 - 柔和护眼配色 */
 [data-theme="dark"] {
-    --bg-gradient-start: #121212;
-    --bg-gradient-end: #1e1e1e;
-    --bg-primary: #121212;
-    --bg-secondary: #1e1e1e;
-    --bg-tertiary: #2c2c2c;
+    --bg-gradient-start: #1a1a1a;
+    --bg-gradient-end: #242424;
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #242424;
+    --bg-tertiary: #303030;
     --bg-hover: #383838;
-    --text-primary: #ffffff;
-    --text-secondary: #e0e0e0;
-    --text-muted: #9e9e9e;
+    --text-primary: #e0e0e0;
+    --text-secondary: #b0b0b0;
+    --text-muted: #808080;
     --text-placeholder: #6b6b6b;
     --border-color: #3d3d3d;
     --input-border: #4a4a4a;
     --shadow-color: rgba(0,0,0,0.5);
     --shadow-hover: rgba(0,0,0,0.7);
     --modal-bg: rgba(0,0,0,0.8);
-    --toast-bg: #2c2c2c;
+    --toast-bg: #303030;
     --toast-shadow: rgba(0,0,0,0.6);
     --switch-bg: #4a4a4a;
     --spinner-bg: #3d3d3d;
-    /* Apple HIG 语义色 */
-    --badge-success-bg: rgba(48,209,88,0.16);
-    --badge-success-color: #30d158;
-    --badge-danger-bg: rgba(255,69,58,0.16);
-    --badge-danger-color: #ff453a;
-    --badge-info-bg: rgba(100,210,255,0.16);
-    --badge-info-color: #64d2ff;
-    --link-color: #0a84ff;
+    /* 语义色 - 降低饱和度 */
+    --badge-success-bg: rgba(74,222,128,0.16);
+    --badge-success-color: #4ade80;
+    --badge-danger-bg: rgba(248,113,113,0.16);
+    --badge-danger-color: #f87171;
+    --badge-info-bg: rgba(125,211,252,0.16);
+    --badge-info-color: #7dd3fc;
+    --link-color: #60a5fa;
 }
 
 body {
@@ -159,22 +159,22 @@ body {
         }
         
         /* Button Styles */
-        .btn { 
-            padding: 12px 24px; 
-            background: linear-gradient(135deg, #667eea, #764ba2); 
-            color: white; 
-            border: none; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            font-size: 14px; 
+        .btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
             font-weight: 600;
             transition: all 0.3s;
             display: inline-block;
             text-align: center;
         }
-        .btn:hover { 
+        .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 5px 15px rgba(99, 102, 241, 0.4);
         }
         .btn:disabled {
             opacity: 0.6;
@@ -218,37 +218,37 @@ body {
             background: var(--bg-hover);
             box-shadow: 0 2px 8px var(--shadow-color);
         }
-        /* 暗黑模式按钮优化 - Apple 系统色 */
+        /* 暗黑模式按钮优化 - 柔和配色 */
         [data-theme="dark"] .btn {
-            background: #0a84ff;
+            background: #3b82f6;
             color: #f0f0f0;
         }
         [data-theme="dark"] .btn:hover {
-            box-shadow: 0 5px 15px rgba(10, 132, 255, 0.4);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
         }
         [data-theme="dark"] .btn-danger {
-            background: #ff453a;
+            background: #ef4444;
         }
         [data-theme="dark"] .btn-danger:hover {
-            box-shadow: 0 5px 15px rgba(255, 69, 58, 0.4);
+            box-shadow: 0 5px 15px rgba(239, 68, 68, 0.4);
         }
         [data-theme="dark"] .btn-success {
-            background: #30d158;
+            background: #22c55e;
         }
         [data-theme="dark"] .btn-success:hover {
-            box-shadow: 0 5px 15px rgba(48, 209, 88, 0.4);
+            box-shadow: 0 5px 15px rgba(34, 197, 94, 0.4);
         }
         [data-theme="dark"] .btn-info {
-            background: #64d2ff;
+            background: #38bdf8;
         }
         [data-theme="dark"] .btn-info:hover {
-            box-shadow: 0 5px 15px rgba(100, 210, 255, 0.4);
+            box-shadow: 0 5px 15px rgba(56, 189, 248, 0.4);
         }
         [data-theme="dark"] .btn-warning {
-            background: #ff9f0a;
+            background: #f59e0b;
         }
         [data-theme="dark"] .btn-warning:hover {
-            box-shadow: 0 5px 15px rgba(255, 159, 10, 0.4);
+            box-shadow: 0 5px 15px rgba(245, 158, 11, 0.4);
         }
         [data-theme="dark"] .btn-secondary {
             background: transparent;
@@ -444,6 +444,11 @@ body {
         }
         .table tbody tr:hover {
             background: var(--bg-hover);
+        }
+        /* 操作列靠右对齐 */
+        .table td:last-child {
+            text-align: right;
+            white-space: nowrap;
         }
         
         /* Badge Styles */
