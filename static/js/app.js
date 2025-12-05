@@ -86,6 +86,7 @@
 
                     document.getElementById('loginContainer').style.display = 'none';
                     document.getElementById('dashboard').style.display = 'block';
+                    document.getElementById('dashboard').style.visibility = 'visible';
 
                     loadDashboard();
                     loadAccounts();
@@ -115,6 +116,14 @@
                 }
             });
             
+            // 移除防闪烁样式的辅助函数
+            function removeAntiFlickerStyle() {
+                var antiFlickerStyle = document.getElementById('anti-flicker-style');
+                if (antiFlickerStyle) {
+                    antiFlickerStyle.remove();
+                }
+            }
+
             // 检查是否已登录
             if (authToken) {
                 // 验证token是否有效
@@ -123,10 +132,12 @@
                         'Authorization': 'Bearer ' + authToken
                     }
                 }).then(response => {
+                    removeAntiFlickerStyle();
                     if (response.ok) {
                         // Token有效，直接显示控制面板
                         document.getElementById('loginContainer').style.display = 'none';
                         document.getElementById('dashboard').style.display = 'block';
+                        document.getElementById('dashboard').style.visibility = 'visible';
                         loadDashboard();
                         loadAccounts();
                     } else {
@@ -134,18 +145,23 @@
                         localStorage.removeItem('authToken');
                         authToken = null;
                         document.getElementById('loginContainer').style.display = 'flex';
+                        document.getElementById('loginContainer').style.visibility = 'visible';
                         document.getElementById('dashboard').style.display = 'none';
                     }
                 }).catch(error => {
+                    removeAntiFlickerStyle();
                     console.error('Token check error:', error);
                     localStorage.removeItem('authToken');
                     authToken = null;
                     document.getElementById('loginContainer').style.display = 'flex';
+                    document.getElementById('loginContainer').style.visibility = 'visible';
                     document.getElementById('dashboard').style.display = 'none';
                 });
             } else {
                 // 没有token，显示登录页面
+                removeAntiFlickerStyle();
                 document.getElementById('loginContainer').style.display = 'flex';
+                document.getElementById('loginContainer').style.visibility = 'visible';
                 document.getElementById('dashboard').style.display = 'none';
             }
         });
