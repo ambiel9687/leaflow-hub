@@ -443,7 +443,7 @@
 
         async function loadCheckinHistory(accountId) {
             const tbody = document.getElementById('historyList');
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #a0aec0;">加载中...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #a0aec0;">加载中...</td></tr>';
 
             try {
                 const history = await apiCall(`/api/checkin/history/${accountId}`);
@@ -456,23 +456,33 @@
                         const statusText = record.success ? '成功' : '失败';
                         const statusClass = record.success ? 'badge-success' : 'badge-danger';
                         const time = record.created_at ? new Date(record.created_at).toLocaleString() : '-';
-                        const retryTimes = record.retry_times || 0;
+
+                        // 精简消息展示
+                        let displayMsg = '-';
+                        if (record.success) {
+                            // 成功：提取金额显示
+                            const creditMatch = (record.message || '').match(/(\d+\.?\d*)\s*(credits?|元)/i);
+                            displayMsg = creditMatch ? `+${creditMatch[1]}` : '签到成功';
+                        } else {
+                            // 失败：显示原因，超过30字截断
+                            const msg = record.message || '签到失败';
+                            displayMsg = msg.length > 30 ? msg.substring(0, 30) + '...' : msg;
+                        }
 
                         tr.innerHTML = `
                             <td><input type="checkbox" class="history-checkbox" value="${record.id}"></td>
                             <td><span class="badge ${statusClass}">${statusText}</span></td>
-                            <td>${record.message || '-'}</td>
-                            <td>${retryTimes > 0 ? retryTimes : '-'}</td>
-                            <td>${time}</td>
+                            <td title="${record.message || ''}">${displayMsg}</td>
+                            <td class="text-small text-muted">${time}</td>
                         `;
                         tbody.appendChild(tr);
                     });
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #a0aec0;">暂无签到记录</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #a0aec0;">暂无签到记录</td></tr>';
                 }
             } catch (error) {
                 console.error('Failed to load checkin history:', error);
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #e53e3e;">加载失败</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #e53e3e;">加载失败</td></tr>';
             }
         }
 

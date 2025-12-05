@@ -1022,3 +1022,16 @@ body {
         [data-theme="dark"] .btn-warning:hover {
             background: #e08d09;
         }
+
+        /* 辅助样式 */
+        .text-small {
+            font-size: 0.85em;
+        }
+
+        .text-muted {
+            color: #a0aec0;
+        }
+
+        [data-theme="dark"] .text-muted {
+            color: #718096;
+        }
