@@ -399,22 +399,15 @@ class BatchRedeemScheduler:
             # 获取兑换码列表
             codes = json.loads(task['codes'])
 
-            # 统一时间格式进行比较
-            task_created_at = task['created_at']
-            if isinstance(task_created_at, datetime):
-                task_created_at = task_created_at.strftime('%Y-%m-%d %H:%M:%S')
-            elif task_created_at and '.' in str(task_created_at):
-                # 移除微秒部分
-                task_created_at = str(task_created_at).split('.')[0]
-
-            # 获取每个兑换码的执行结果
-            history = db.fetchall('''
+            # 获取每个兑换码的执行结果（直接用 code 列表查询）
+            codes_placeholder = ','.join(['?' for _ in codes])
+            history = db.fetchall(f'''
                 SELECT code, success, message, amount, created_at
                 FROM redeem_history
                 WHERE account_id = ?
-                AND created_at >= ?
-                ORDER BY created_at ASC
-            ''', (account_id, task_created_at))
+                AND code IN ({codes_placeholder})
+                ORDER BY created_at DESC
+            ''', (account_id, *codes))
 
             # 构建兑换码结果映射
             history_map = {}
