@@ -1035,3 +1035,257 @@ body {
         [data-theme="dark"] .text-muted {
             color: #718096;
         }
+
+        /* ========== 邀请码样式 ========== */
+
+        /* 邀请码统计区域 */
+        .invitation-stats {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .invitation-stats .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .invitation-stats .stat-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        [data-theme="dark"] .invitation-stats .stat-label {
+            color: #8e8e93;
+        }
+
+        .invitation-stats .stat-value {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .invitation-stats .stat-total {
+            color: var(--primary-color);
+        }
+
+        [data-theme="dark"] .invitation-stats .stat-total {
+            color: #0a84ff;
+        }
+
+        .invitation-stats .stat-available {
+            color: var(--badge-success-color);
+        }
+
+        [data-theme="dark"] .invitation-stats .stat-available {
+            color: #30d158;
+        }
+
+        .invitation-stats .stat-uses {
+            color: var(--text-secondary);
+        }
+
+        [data-theme="dark"] .invitation-stats .stat-uses {
+            color: #8e8e93;
+        }
+
+        .invitation-stats button {
+            margin-left: auto;
+        }
+
+        /* 价格提示 */
+        .invitation-price-hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+            border-left: 3px solid var(--primary-color);
+        }
+
+        [data-theme="dark"] .invitation-price-hint {
+            color: #8e8e93;
+            background: rgba(142, 142, 147, 0.1);
+            border-left-color: #0a84ff;
+        }
+
+        /* 邀请码列表 */
+        .invitation-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .invitation-loading,
+        .invitation-empty,
+        .invitation-error {
+            text-align: center;
+            padding: 30px 20px;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .invitation-error {
+            color: var(--badge-danger-color);
+        }
+
+        [data-theme="dark"] .invitation-loading,
+        [data-theme="dark"] .invitation-empty {
+            color: #8e8e93;
+        }
+
+        [data-theme="dark"] .invitation-error {
+            color: #ff453a;
+        }
+
+        /* 邀请码列表项 */
+        .invitation-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+            transition: background 0.2s ease;
+        }
+
+        .invitation-item:last-child {
+            border-bottom: none;
+        }
+
+        .invitation-item:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .invitation-item.used {
+            opacity: 0.6;
+        }
+
+        .invitation-main {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .invitation-code {
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary-color);
+            background: var(--bg-secondary);
+            padding: 4px 10px;
+            border-radius: 4px;
+            letter-spacing: 0.5px;
+        }
+
+        [data-theme="dark"] .invitation-code {
+            color: #0a84ff;
+            background: rgba(10, 132, 255, 0.15);
+        }
+
+        .invitation-usage {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        [data-theme="dark"] .invitation-usage {
+            color: #8e8e93;
+        }
+
+        .invitation-status {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+
+        .invitation-status.available {
+            background: rgba(72, 187, 120, 0.15);
+            color: var(--badge-success-color);
+        }
+
+        .invitation-status.used {
+            background: rgba(160, 174, 192, 0.15);
+            color: var(--text-muted);
+        }
+
+        [data-theme="dark"] .invitation-status.available {
+            background: rgba(48, 209, 88, 0.2);
+            color: #30d158;
+        }
+
+        [data-theme="dark"] .invitation-status.used {
+            background: rgba(142, 142, 147, 0.2);
+            color: #8e8e93;
+        }
+
+        /* 邀请码操作按钮 */
+        .invitation-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .invitation-actions .btn-copy,
+        .invitation-actions .btn-copy-link {
+            font-size: 11px;
+            padding: 4px 10px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .invitation-actions .btn-copy:hover,
+        .invitation-actions .btn-copy-link:hover {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        [data-theme="dark"] .invitation-actions .btn-copy,
+        [data-theme="dark"] .invitation-actions .btn-copy-link {
+            background: var(--bg-tertiary);
+            border-color: var(--border-color);
+        }
+
+        [data-theme="dark"] .invitation-actions .btn-copy:hover,
+        [data-theme="dark"] .invitation-actions .btn-copy-link:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* 响应式：小屏幕 */
+        @media (max-width: 480px) {
+            .invitation-stats {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .invitation-stats button {
+                margin-left: 0;
+                width: 100%;
+            }
+
+            .invitation-main {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .invitation-actions {
+                width: 100%;
+            }
+
+            .invitation-actions .btn-copy,
+            .invitation-actions .btn-copy-link {
+                flex: 1;
+                text-align: center;
+            }
+        }

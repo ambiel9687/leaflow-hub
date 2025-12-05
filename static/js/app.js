@@ -325,6 +325,7 @@
                                 <button class="btn btn-warning btn-sm" onclick="refreshBalance(${account.id})" title="刷新余额">刷新</button>
                                 <button class="btn btn-success btn-sm" onclick="manualCheckin(${account.id})">签到</button>
                                 <button class="btn btn-primary btn-sm" onclick="showRedeemModal(${account.id}, '${escapedName}')">兑换</button>
+                                <button class="btn btn-secondary btn-sm" onclick="showInvitationModal(${account.id}, '${escapedName}')">邀请码</button>
                                 <button class="btn btn-info btn-sm" onclick="showEditAccountModal(${account.id})">修改</button>
                                 <button class="btn btn-danger btn-sm" onclick="deleteAccount(${account.id})">删除</button>
                             </td>
@@ -605,6 +606,9 @@
                 document.getElementById('redeemCode').value = '';
                 document.getElementById('redeemHistorySection').style.display = 'none';
                 document.getElementById('redeemHistoryList').innerHTML = '';
+            } else if (modalId === 'invitationModal') {
+                document.getElementById('invitationAccountId').value = '';
+                document.getElementById('invitationList').innerHTML = '<div class="invitation-loading">加载中...</div>';
             }
         }
 
@@ -663,7 +667,7 @@
 
         // Close modal when clicking outside
         window.onclick = function(event) {
-            const modals = ['addAccountModal', 'editAccountModal', 'checkinHistoryModal', 'notificationModal', 'checkinSettingsModal', 'redeemModal'];
+            const modals = ['addAccountModal', 'editAccountModal', 'checkinHistoryModal', 'notificationModal', 'checkinSettingsModal', 'redeemModal', 'invitationModal'];
             modals.forEach(modalId => {
                 const modal = document.getElementById(modalId);
                 if (event.target == modal) {
@@ -1390,3 +1394,196 @@
                 document.getElementById(modalId).style.display = 'none';
             }
         };
+
+        // ========== 邀请码相关函数 ==========
+
+        // 显示邀请码弹窗
+        async function showInvitationModal(accountId, accountName) {
+            document.getElementById('invitationAccountId').value = accountId;
+            document.getElementById('invitationModalTitle').textContent = `🎫 ${accountName} - 邀请码`;
+            document.getElementById('invitationModal').style.display = 'flex';
+
+            // 加载邀请码列表（使用缓存）
+            await loadInvitationCodes(accountId, false);
+        }
+
+        // 刷新邀请码列表（强制从服务器获取）
+        async function refreshInvitationCodes() {
+            const accountId = document.getElementById('invitationAccountId').value;
+            if (!accountId) {
+                showToast('账号信息丢失', 'error');
+                return;
+            }
+
+            const refreshBtn = document.getElementById('refreshInvitationBtn');
+            refreshBtn.disabled = true;
+            refreshBtn.innerHTML = '🔄 刷新中...';
+
+            try {
+                await loadInvitationCodes(accountId, true);
+                showToast('邀请码已刷新', 'success');
+            } finally {
+                refreshBtn.disabled = false;
+                refreshBtn.innerHTML = '🔄 刷新';
+            }
+        }
+
+        // 加载邀请码列表
+        async function loadInvitationCodes(accountId, refresh = false) {
+            const listEl = document.getElementById('invitationList');
+            const totalEl = document.getElementById('invitationTotal');
+            const availableEl = document.getElementById('invitationAvailable');
+            const totalUsesEl = document.getElementById('invitationTotalUses');
+            const priceEl = document.getElementById('invitationPrice');
+            const generateBtn = document.getElementById('generateInvitationBtn');
+
+            // 显示加载状态
+            listEl.innerHTML = '<div class="invitation-loading">加载中...</div>';
+            generateBtn.disabled = true;
+
+            try {
+                // 构建 URL，支持 refresh 参数
+                const url = refresh
+                    ? `/api/accounts/${accountId}/invitation-codes?refresh=true`
+                    : `/api/accounts/${accountId}/invitation-codes`;
+
+                const result = await apiCall(url);
+
+                if (!result.success) {
+                    listEl.innerHTML = `<div class="invitation-error">${result.message || '加载失败'}</div>`;
+                    return;
+                }
+
+                // 更新统计信息
+                totalEl.textContent = result.stats.total || 0;
+                availableEl.textContent = result.stats.available || 0;
+                totalUsesEl.textContent = result.stats.total_uses || 0;
+
+                // 更新价格
+                if (result.settings && result.settings.price) {
+                    priceEl.textContent = result.settings.price;
+                }
+
+                // 启用生成按钮（如果允许）
+                generateBtn.disabled = !result.settings?.allow_user_generation;
+
+                // 渲染邀请码列表
+                const codes = result.codes || [];
+
+                if (codes.length === 0) {
+                    listEl.innerHTML = '<div class="invitation-empty">暂无邀请码，点击上方按钮生成</div>';
+                    return;
+                }
+
+                listEl.innerHTML = codes.map(code => {
+                    const isAvailable = code.is_available && code.remaining_uses > 0;
+                    const statusClass = isAvailable ? 'available' : 'used';
+                    const statusText = isAvailable ? '可用' : '已用完';
+                    const inviteUrl = `https://leaflow.net/invite/${code.code}`;
+
+                    return `
+                        <div class="invitation-item ${statusClass}">
+                            <div class="invitation-main">
+                                <code class="invitation-code">${code.code}</code>
+                                <span class="invitation-usage">使用次数 ${code.used_count || 0}/${code.max_uses}</span>
+                                <span class="invitation-status ${statusClass}">${statusText}</span>
+                            </div>
+                            <div class="invitation-actions">
+                                <button class="btn btn-sm btn-copy" onclick="copyToClipboard('${code.code}')" title="复制邀请码">
+                                    📋 复制码
+                                </button>
+                                <button class="btn btn-sm btn-copy-link" onclick="copyToClipboard('${inviteUrl}')" title="复制邀请链接">
+                                    🔗 复制链接
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (error) {
+                console.error('Load invitation codes error:', error);
+                listEl.innerHTML = `<div class="invitation-error">加载失败: ${error.message}</div>`;
+            } finally {
+                generateBtn.disabled = false;
+            }
+        }
+
+        // 创建邀请码
+        async function createInvitationCode() {
+            const accountId = document.getElementById('invitationAccountId').value;
+            const btn = document.getElementById('generateInvitationBtn');
+
+            if (!accountId) {
+                showToast('账号信息丢失', 'error');
+                return;
+            }
+
+            // 确认消费
+            const price = document.getElementById('invitationPrice').textContent;
+            if (!confirm(`生成邀请码将消耗 ¥${price} 余额，确定继续吗？`)) {
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = '生成中...';
+
+            try {
+                const result = await apiCall(`/api/accounts/${accountId}/invitation-codes`, {
+                    method: 'POST'
+                });
+
+                if (result.success) {
+                    showToast(`邀请码创建成功: ${result.code.code}`, 'success');
+                    // 刷新列表
+                    await loadInvitationCodes(accountId);
+                    // 刷新余额显示
+                    loadAccounts();
+                    loadDashboard();
+                } else {
+                    showToast(result.message || '创建失败', 'error');
+                }
+            } catch (error) {
+                showToast('创建失败: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '生成邀请码';
+            }
+        }
+
+        // 复制到剪贴板
+        async function copyToClipboard(text) {
+            try {
+                // 优先使用 Clipboard API
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(text);
+                    showToast('已复制到剪贴板', 'success');
+                    return;
+                }
+            } catch (error) {
+                console.warn('Clipboard API failed, using fallback:', error);
+            }
+
+            // 降级方案：使用 textarea
+            try {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.position = 'fixed';
+                textarea.style.left = '-9999px';
+                textarea.style.top = '-9999px';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                textarea.setSelectionRange(0, text.length);
+                const success = document.execCommand('copy');
+                document.body.removeChild(textarea);
+
+                if (success) {
+                    showToast('已复制到剪贴板', 'success');
+                } else {
+                    showToast('复制失败，请手动复制', 'error');
+                }
+            } catch (error) {
+                console.error('Copy failed:', error);
+                showToast('复制失败，请手动复制', 'error');
+            }
+        }

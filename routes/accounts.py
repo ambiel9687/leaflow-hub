@@ -504,3 +504,102 @@ def resume_batch_redeem(task_id):
         logger.error(f"Resume batch redeem error: {e}")
         return jsonify({'success': False, 'message': f'恢复失败: {str(e)}'}), 500
 
+
+# ============ 邀请码 API ============
+
+@accounts_bp.route('/api/accounts/<int:account_id>/invitation-codes', methods=['GET'])
+@token_required
+def get_invitation_codes(account_id):
+    """获取账户的邀请码列表（支持缓存）"""
+    from services.invitation_service import InvitationService
+    from services.checkin_service import LeafLowCheckin
+
+    try:
+        # 获取 refresh 参数
+        refresh = request.args.get('refresh', 'false').lower() == 'true'
+
+        # 获取账号
+        account = db.fetchone('SELECT * FROM accounts WHERE id = ?', (account_id,))
+        if not account:
+            return jsonify({'success': False, 'message': '账号不存在'}), 404
+
+        # 如果不需要刷新，检查是否已同步过
+        if not refresh and InvitationService.has_synced(db, account_id):
+            # 已同步过，返回数据库缓存（即使为空）
+            cached_codes = InvitationService.get_cached_codes(db, account_id)
+            codes = InvitationService.format_cached_codes(cached_codes)
+            stats = InvitationService.calculate_stats(codes)
+            logger.info(f"Returning {len(codes)} cached invitation codes for account {account_id}")
+            return jsonify({
+                'success': True,
+                'codes': codes,
+                'stats': stats,
+                'settings': {'price': 10, 'allow_user_generation': True},
+                'cached': True
+            })
+
+        # 创建 session 调用 API
+        token_data = json.loads(account['token_data'])
+        leaflow_checkin = LeafLowCheckin()
+        session = leaflow_checkin.create_session(token_data)
+
+        # 获取邀请码列表
+        success, result = InvitationService.get_invitation_codes(session)
+
+        if success:
+            # 保存到数据库缓存（即使为空列表）
+            InvitationService.save_codes_to_db(db, account_id, result['codes'])
+            # 更新同步时间（标记已同步过）
+            InvitationService.update_sync_time(db, account_id)
+
+            return jsonify({
+                'success': True,
+                'codes': result['codes'],
+                'stats': result['stats'],
+                'settings': result['settings'],
+                'cached': False
+            })
+        else:
+            return jsonify({'success': False, 'message': result}), 400
+
+    except Exception as e:
+        logger.error(f"Get invitation codes error: {e}")
+        return jsonify({'success': False, 'message': f'获取邀请码失败: {str(e)}'}), 500
+
+
+@accounts_bp.route('/api/accounts/<int:account_id>/invitation-codes', methods=['POST'])
+@token_required
+def create_invitation_code(account_id):
+    """为账户创建新邀请码"""
+    from services.invitation_service import InvitationService
+    from services.checkin_service import LeafLowCheckin
+
+    try:
+        # 获取账号
+        account = db.fetchone('SELECT * FROM accounts WHERE id = ?', (account_id,))
+        if not account:
+            return jsonify({'success': False, 'message': '账号不存在'}), 404
+
+        # 创建 session
+        token_data = json.loads(account['token_data'])
+        leaflow_checkin = LeafLowCheckin()
+        session = leaflow_checkin.create_session(token_data)
+
+        # 创建邀请码（固定 max_uses=1）
+        success, result = InvitationService.create_invitation_code(session, max_uses=1)
+
+        if success:
+            logger.info(f"Account {account['name']} created invitation code: {result.get('code')}")
+            # 保存到数据库缓存
+            InvitationService.save_single_code(db, account_id, result)
+            return jsonify({
+                'success': True,
+                'code': result
+            })
+        else:
+            return jsonify({'success': False, 'message': result}), 400
+
+    except Exception as e:
+        logger.error(f"Create invitation code error: {e}")
+        return jsonify({'success': False, 'message': f'创建邀请码失败: {str(e)}'}), 500
+

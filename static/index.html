@@ -444,6 +444,53 @@
         </div>
     </div>
 
+    <!-- Invitation Code Modal -->
+    <div class="modal" id="invitationModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="invitationModalTitle">🎫 邀请码</h3>
+                <button class="close" onclick="closeModal('invitationModal')">&times;</button>
+            </div>
+            <input type="hidden" id="invitationAccountId">
+
+            <!-- 统计信息和生成按钮 -->
+            <div class="invitation-stats">
+                <span class="stat-item">
+                    <span class="stat-label">邀请码</span>
+                    <span class="stat-value stat-total" id="invitationTotal">0</span>
+                </span>
+                <span class="stat-item">
+                    <span class="stat-label">可用</span>
+                    <span class="stat-value stat-available" id="invitationAvailable">0</span>
+                </span>
+                <span class="stat-item">
+                    <span class="stat-label">总使用</span>
+                    <span class="stat-value stat-uses" id="invitationTotalUses">0</span>
+                </span>
+                <button class="btn btn-warning btn-sm" id="refreshInvitationBtn" onclick="refreshInvitationCodes()" title="从服务器刷新">
+                    🔄 刷新
+                </button>
+                <button class="btn btn-primary btn-sm" id="generateInvitationBtn" onclick="createInvitationCode()">
+                    生成邀请码
+                </button>
+            </div>
+
+            <!-- 价格提示 -->
+            <div class="invitation-price-hint" id="invitationPriceHint">
+                生成邀请码需消耗 ¥<span id="invitationPrice">10</span> 余额
+            </div>
+
+            <!-- 邀请码列表 -->
+            <div id="invitationList" class="invitation-list">
+                <div class="invitation-loading">加载中...</div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('invitationModal')">关闭</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/static/js/app.js"></script>
 </body>
 </html>

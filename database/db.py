@@ -312,6 +312,26 @@ class Database:
                         )
                     ''')
 
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS invitation_codes (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            account_id INT NOT NULL,
+                            code VARCHAR(20) NOT NULL,
+                            max_uses INT DEFAULT 1,
+                            used_count INT DEFAULT 0,
+                            remaining_uses INT DEFAULT 1,
+                            is_active BOOLEAN DEFAULT TRUE,
+                            is_available BOOLEAN DEFAULT TRUE,
+                            note TEXT,
+                            leaflow_id INT,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                            FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+                            UNIQUE KEY uk_account_code (account_id, code),
+                            INDEX idx_invitation_account (account_id)
+                        )
+                    ''')
+
                     # Add new fields if not exist
                     new_fields = [
                         ("accounts", "retry_count", "INT DEFAULT 2"),
@@ -336,6 +356,8 @@ class Database:
                         ("accounts", "current_balance", "VARCHAR(50) DEFAULT ''"),
                         ("accounts", "total_consumed", "VARCHAR(50) DEFAULT ''"),
                         ("accounts", "balance_updated_at", "TIMESTAMP NULL DEFAULT NULL"),
+                        # Invitation codes sync time
+                        ("accounts", "invitation_synced_at", "TIMESTAMP NULL DEFAULT NULL"),
                     ]
 
                     for table_name, field_name, field_type in new_fields:
@@ -439,10 +461,30 @@ class Database:
                         )
                     ''')
 
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS invitation_codes (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            account_id INTEGER NOT NULL,
+                            code VARCHAR(20) NOT NULL,
+                            max_uses INTEGER DEFAULT 1,
+                            used_count INTEGER DEFAULT 0,
+                            remaining_uses INTEGER DEFAULT 1,
+                            is_active BOOLEAN DEFAULT 1,
+                            is_available BOOLEAN DEFAULT 1,
+                            note TEXT,
+                            leaflow_id INTEGER,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+                            UNIQUE (account_id, code)
+                        )
+                    ''')
+
                     cursor.execute('CREATE INDEX IF NOT EXISTS idx_redeem_account ON redeem_history(account_id)')
                     cursor.execute('CREATE INDEX IF NOT EXISTS idx_redeem_time ON redeem_history(created_at)')
                     cursor.execute('CREATE INDEX IF NOT EXISTS idx_batch_status ON batch_redeem_tasks(status)')
                     cursor.execute('CREATE INDEX IF NOT EXISTS idx_batch_account ON batch_redeem_tasks(account_id)')
+                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_invitation_account ON invitation_codes(account_id)')
 
                     # SQLite: Add new fields if not exist
                     sqlite_new_fields = [
@@ -453,6 +495,8 @@ class Database:
                         ("accounts", "current_balance", "TEXT DEFAULT ''"),
                         ("accounts", "total_consumed", "TEXT DEFAULT ''"),
                         ("accounts", "balance_updated_at", "TIMESTAMP DEFAULT NULL"),
+                        # Invitation codes sync time
+                        ("accounts", "invitation_synced_at", "TIMESTAMP DEFAULT NULL"),
                     ]
 
                     for table_name, field_name, field_type in sqlite_new_fields:
