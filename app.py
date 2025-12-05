@@ -11,6 +11,7 @@ from flask_cors import CORS
 from config import JWT_SECRET_KEY, PORT, logger
 from routes import register_blueprints
 from services import scheduler
+from services.batch_redeem_service import batch_redeem_scheduler
 
 # Create Flask app
 app = Flask(__name__, static_folder='static')
@@ -34,7 +35,8 @@ def static_files(path):
 
 
 if __name__ == '__main__':
-    # Start the scheduler
+    # Start the schedulers
     scheduler.start()
+    batch_redeem_scheduler.start()
     logger.info(f"Starting Leaflow Auto Check-in Control Panel on port {PORT}")
     app.run(host='0.0.0.0', port=PORT, debug=False)

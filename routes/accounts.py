@@ -399,3 +399,108 @@ def get_redeem_history(account_id):
         logger.error(f"Get redeem history error: {e}")
         return jsonify({'error': 'Failed to load redeem history'}), 500
 
+
+# ============ 批量兑换 API ============
+
+@accounts_bp.route('/api/accounts/<int:account_id>/batch-redeem', methods=['POST'])
+@token_required
+def create_batch_redeem(account_id):
+    """创建批量兑换任务"""
+    from services.batch_redeem_service import batch_redeem_scheduler
+
+    try:
+        data = request.get_json()
+        codes = data.get('codes', [])
+
+        if not codes:
+            return jsonify({'success': False, 'message': '请输入兑换码'}), 400
+
+        # 去重并过滤空值
+        codes = list(dict.fromkeys([c.strip() for c in codes if c.strip()]))
+
+        if not codes:
+            return jsonify({'success': False, 'message': '没有有效的兑换码'}), 400
+
+        # 检查账号是否存在
+        account = db.fetchone('SELECT id, name FROM accounts WHERE id = ?', (account_id,))
+        if not account:
+            return jsonify({'success': False, 'message': '账号不存在'}), 404
+
+        # 创建任务
+        result = batch_redeem_scheduler.create_task(account_id, codes)
+
+        if result['success']:
+            logger.info(f"Batch redeem task created for account {account['name']}: {len(codes)} codes")
+            return jsonify(result)
+        else:
+            return jsonify(result), 400
+
+    except Exception as e:
+        logger.error(f"Create batch redeem error: {e}")
+        return jsonify({'success': False, 'message': f'创建任务失败: {str(e)}'}), 500
+
+
+@accounts_bp.route('/api/accounts/<int:account_id>/batch-redeem', methods=['GET'])
+@token_required
+def get_batch_redeem_status(account_id):
+    """获取批量兑换任务状态"""
+    from services.batch_redeem_service import batch_redeem_scheduler
+
+    try:
+        result = batch_redeem_scheduler.get_task_status(account_id)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Get batch redeem status error: {e}")
+        return jsonify({'task': None, 'progress': [], 'error': str(e)}), 500
+
+
+@accounts_bp.route('/api/batch-redeem/<int:task_id>/cancel', methods=['POST'])
+@token_required
+def cancel_batch_redeem(task_id):
+    """取消批量兑换任务"""
+    from services.batch_redeem_service import batch_redeem_scheduler
+
+    try:
+        result = batch_redeem_scheduler.cancel_task(task_id)
+        if result['success']:
+            return jsonify(result)
+        else:
+            return jsonify(result), 400
+    except Exception as e:
+        logger.error(f"Cancel batch redeem error: {e}")
+        return jsonify({'success': False, 'message': f'取消失败: {str(e)}'}), 500
+
+
+@accounts_bp.route('/api/batch-redeem/<int:task_id>/pause', methods=['POST'])
+@token_required
+def pause_batch_redeem(task_id):
+    """暂停批量兑换任务"""
+    from services.batch_redeem_service import batch_redeem_scheduler
+
+    try:
+        result = batch_redeem_scheduler.pause_task(task_id)
+        if result['success']:
+            return jsonify(result)
+        else:
+            return jsonify(result), 400
+    except Exception as e:
+        logger.error(f"Pause batch redeem error: {e}")
+        return jsonify({'success': False, 'message': f'暂停失败: {str(e)}'}), 500
+
+
+@accounts_bp.route('/api/batch-redeem/<int:task_id>/resume', methods=['POST'])
+@token_required
+def resume_batch_redeem(task_id):
+    """恢复批量兑换任务"""
+    from services.batch_redeem_service import batch_redeem_scheduler
+
+    try:
+        result = batch_redeem_scheduler.resume_task(task_id)
+        if result['success']:
+            return jsonify(result)
+        else:
+            return jsonify(result), 400
+    except Exception as e:
+        logger.error(f"Resume batch redeem error: {e}")
+        return jsonify({'success': False, 'message': f'恢复失败: {str(e)}'}), 500
+

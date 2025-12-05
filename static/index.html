@@ -388,9 +388,17 @@
                 <h3 id="redeemModalTitle">🎁 兑换码</h3>
                 <button class="close" onclick="closeModal('redeemModal')">&times;</button>
             </div>
-            <div id="redeemForm">
-                <input type="hidden" id="redeemAccountId">
-                <div id="redeemCountdownSection" style="margin-bottom: 12px; padding: 8px 12px; background: var(--bg-secondary); border-radius: 6px; text-align: left; display: none;"></div>
+            <input type="hidden" id="redeemAccountId">
+
+            <!-- Tab 切换 -->
+            <div class="redeem-tabs">
+                <button class="tab-btn active" data-tab="single" onclick="switchRedeemTab('single')">单次兑换</button>
+                <button class="tab-btn" data-tab="batch" onclick="switchRedeemTab('batch')">批量兑换</button>
+            </div>
+
+            <!-- 单次兑换 Tab -->
+            <div class="tab-content active" id="singleRedeemTab">
+                <div id="redeemCountdownSection" style="margin-bottom: 12px; padding: 8px 12px; background: var(--bg-tertiary); border-radius: 6px; text-align: left; display: none;"></div>
                 <div class="form-group">
                     <label>兑换码</label>
                     <input type="text" id="redeemCode" placeholder="请输入兑换码" required>
@@ -403,6 +411,35 @@
                 <div style="display: flex; gap: 10px; margin-top: 20px;">
                     <button type="button" class="btn btn-full" onclick="submitRedeem()">兑换</button>
                     <button type="button" class="btn btn-secondary" onclick="closeModal('redeemModal')">取消</button>
+                </div>
+            </div>
+
+            <!-- 批量兑换 Tab -->
+            <div class="tab-content" id="batchRedeemTab">
+                <div class="form-group">
+                    <label>兑换码（多个）</label>
+                    <textarea id="batchRedeemCodes" rows="5" placeholder="每行一个兑换码，或用逗号分隔" oninput="updateBatchCodeCount()"></textarea>
+                    <div class="format-hint">共 <span id="batchCodeCount">0</span> 个兑换码 · 成功间隔70分钟 · 失败间隔1分钟</div>
+                </div>
+
+                <!-- 批量任务进度区域 -->
+                <div id="batchProgressSection" class="batch-progress-section" style="display: none;">
+                    <div class="batch-progress-header">
+                        <span class="batch-status-badge" id="batchStatusBadge">运行中</span>
+                        <span>进度: <strong id="batchCurrentIndex">0</strong>/<span id="batchTotalCount">0</span></span>
+                        <span style="color: var(--badge-success-color);">成功: <span id="batchSuccessCount">0</span></span>
+                        <span style="color: var(--badge-danger-color);">失败: <span id="batchFailCount">0</span></span>
+                    </div>
+                    <div id="batchNextExecute" class="batch-next-execute" style="display: none;"></div>
+                    <div id="batchCodeList" class="batch-code-list"></div>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="button" class="btn btn-full" id="startBatchBtn" onclick="startBatchRedeem()">开始批量兑换</button>
+                    <button type="button" class="btn btn-warning" id="pauseBatchBtn" style="display: none;" onclick="pauseBatchRedeem()">暂停</button>
+                    <button type="button" class="btn btn-full" id="resumeBatchBtn" style="display: none;" onclick="resumeBatchRedeem()">继续</button>
+                    <button type="button" class="btn btn-danger" id="cancelBatchBtn" style="display: none;" onclick="cancelBatchRedeem()">取消</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('redeemModal')">关闭</button>
                 </div>
             </div>
         </div>

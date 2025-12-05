@@ -965,3 +965,418 @@
                 btn.textContent = '兑换';
             }
         }
+
+        // ============ 批量兑换功能 ============
+
+        let batchRedeemTimer = null;
+        let batchCountdownTimer = null;
+        let currentBatchTaskId = null;
+
+        // Tab 切换
+        function switchRedeemTab(tab) {
+            // 更新 Tab 按钮状态
+            document.querySelectorAll('.redeem-tabs .tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`.redeem-tabs .tab-btn[data-tab="${tab}"]`).classList.add('active');
+
+            // 更新 Tab 内容显示
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tab === 'single' ? 'singleRedeemTab' : 'batchRedeemTab').classList.add('active');
+
+            // 切换到批量 Tab 时加载任务状态
+            if (tab === 'batch') {
+                const accountId = document.getElementById('redeemAccountId').value;
+                loadBatchRedeemStatus(accountId);
+            }
+        }
+
+        // 解析兑换码输入（支持换行和逗号分隔）
+        function parseBatchCodes(input) {
+            if (!input) return [];
+            return input
+                .split(/[\n,]+/)
+                .map(code => code.trim())
+                .filter(code => code.length > 0);
+        }
+
+        // 更新兑换码计数
+        function updateBatchCodeCount() {
+            const codes = parseBatchCodes(document.getElementById('batchRedeemCodes').value);
+            document.getElementById('batchCodeCount').textContent = codes.length;
+        }
+
+        // 加载批量兑换任务状态
+        async function loadBatchRedeemStatus(accountId) {
+            try {
+                const data = await apiCall(`/api/accounts/${accountId}/batch-redeem`);
+
+                if (!data.task) {
+                    // 没有任务，显示输入区域
+                    document.getElementById('batchProgressSection').style.display = 'none';
+                    document.getElementById('batchRedeemCodes').disabled = false;
+                    updateBatchButtons(null);
+                    return;
+                }
+
+                const task = data.task;
+                currentBatchTaskId = task.id;
+
+                // 显示进度区域
+                document.getElementById('batchProgressSection').style.display = 'block';
+
+                // 更新状态徽章
+                const statusBadge = document.getElementById('batchStatusBadge');
+                statusBadge.className = 'batch-status-badge ' + task.status;
+                const statusTexts = {
+                    'pending': '等待中',
+                    'running': '运行中',
+                    'paused': '已暂停',
+                    'completed': '已完成',
+                    'cancelled': '已取消'
+                };
+                statusBadge.textContent = statusTexts[task.status] || task.status;
+
+                // 更新进度数字
+                document.getElementById('batchCurrentIndex').textContent = task.current_index;
+                document.getElementById('batchTotalCount').textContent = task.total_count;
+                document.getElementById('batchSuccessCount').textContent = task.success_count;
+                document.getElementById('batchFailCount').textContent = task.fail_count;
+
+                // 更新倒计时
+                updateBatchCountdown(task.next_execute_at, task.status);
+
+                // 渲染兑换码列表
+                renderBatchCodeList(data.progress);
+
+                // 更新按钮状态
+                updateBatchButtons(task.status);
+
+                // 如果任务正在运行，禁用输入并开始轮询
+                if (task.status === 'running' || task.status === 'paused') {
+                    document.getElementById('batchRedeemCodes').disabled = true;
+                    if (task.status === 'running') {
+                        startBatchProgressPolling(accountId);
+                    }
+                } else {
+                    document.getElementById('batchRedeemCodes').disabled = false;
+                    stopBatchProgressPolling();
+                }
+
+            } catch (error) {
+                console.error('Load batch redeem status error:', error);
+            }
+        }
+
+        // 更新倒计时显示
+        function updateBatchCountdown(nextExecuteAt, status) {
+            const countdownEl = document.getElementById('batchNextExecute');
+
+            if (batchCountdownTimer) {
+                clearInterval(batchCountdownTimer);
+                batchCountdownTimer = null;
+            }
+
+            if (!nextExecuteAt || status !== 'running') {
+                countdownEl.style.display = 'none';
+                return;
+            }
+
+            const updateCountdown = () => {
+                // 清理时间字符串，移除微秒部分
+                let cleanTime = nextExecuteAt;
+                if (cleanTime && cleanTime.includes('.')) {
+                    cleanTime = cleanTime.split('.')[0];
+                }
+                const nextTime = new Date(cleanTime.replace(' ', 'T') + '+08:00');
+
+                // 检查时间有效性
+                if (isNaN(nextTime.getTime())) {
+                    countdownEl.style.display = 'none';
+                    return;
+                }
+
+                const now = new Date();
+                const remaining = nextTime.getTime() - now.getTime();
+
+                if (remaining <= 0) {
+                    countdownEl.innerHTML = '⏳ 即将执行下一个兑换码...';
+                } else {
+                    const hours = Math.floor(remaining / 3600000);
+                    const minutes = Math.floor((remaining % 3600000) / 60000);
+                    const seconds = Math.floor((remaining % 60000) / 1000);
+
+                    let timeStr = '';
+                    if (hours > 0) timeStr += `${hours}小时`;
+                    if (minutes > 0 || hours > 0) timeStr += `${minutes}分`;
+                    timeStr += `${seconds}秒`;
+
+                    countdownEl.innerHTML = `⏰ 下次执行: ${timeStr}后`;
+                }
+                countdownEl.style.display = 'block';
+            };
+
+            updateCountdown();
+            batchCountdownTimer = setInterval(updateCountdown, 1000);
+        }
+
+        // 渲染兑换码列表
+        function renderBatchCodeList(progress) {
+            const listEl = document.getElementById('batchCodeList');
+
+            if (!progress || progress.length === 0) {
+                listEl.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">暂无兑换记录</div>';
+                return;
+            }
+
+            listEl.innerHTML = progress.map(item => {
+                let statusClass = '';
+                let statusIcon = '';
+                let message = '';
+
+                switch (item.status) {
+                    case 'success':
+                        statusClass = 'success';
+                        statusIcon = '✅';
+                        message = item.amount ? `+¥${item.amount}` : (item.message || '成功');
+                        break;
+                    case 'failed':
+                        statusClass = 'failed';
+                        statusIcon = '❌';
+                        message = item.message || '失败';
+                        break;
+                    case 'waiting':
+                        statusClass = 'waiting';
+                        statusIcon = '⏰';
+                        // 计算倒计时
+                        if (item.next_execute_at) {
+                            message = formatWaitingTime(item.next_execute_at);
+                        } else {
+                            message = '等待执行';
+                        }
+                        break;
+                    case 'executing':
+                        statusClass = 'executing';
+                        statusIcon = '🔄';
+                        message = '执行中...';
+                        break;
+                    default:
+                        statusClass = 'pending';
+                        statusIcon = '⏳';
+                        message = item.message || '等待中';
+                }
+
+                return `
+                    <div class="batch-code-item ${statusClass}">
+                        <span class="status-icon">${statusIcon}</span>
+                        <code title="${item.code}">${item.code}</code>
+                        <span class="status-message" title="${message}">${message}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 格式化等待时间
+        function formatWaitingTime(nextExecuteAt) {
+            if (!nextExecuteAt) return '等待执行';
+
+            let cleanTime = nextExecuteAt;
+            if (cleanTime.includes('.')) {
+                cleanTime = cleanTime.split('.')[0];
+            }
+            const nextTime = new Date(cleanTime.replace(' ', 'T') + '+08:00');
+
+            if (isNaN(nextTime.getTime())) {
+                return '等待执行';
+            }
+
+            const now = new Date();
+            const remaining = nextTime.getTime() - now.getTime();
+
+            if (remaining <= 0) {
+                return '即将执行';
+            }
+
+            const hours = Math.floor(remaining / 3600000);
+            const minutes = Math.floor((remaining % 3600000) / 60000);
+            const seconds = Math.floor((remaining % 60000) / 1000);
+
+            let timeStr = '';
+            if (hours > 0) timeStr += `${hours}时`;
+            if (minutes > 0 || hours > 0) timeStr += `${minutes}分`;
+            timeStr += `${seconds}秒后`;
+
+            return timeStr;
+        }
+
+        // 更新按钮状态
+        function updateBatchButtons(status) {
+            const startBtn = document.getElementById('startBatchBtn');
+            const pauseBtn = document.getElementById('pauseBatchBtn');
+            const resumeBtn = document.getElementById('resumeBatchBtn');
+            const cancelBtn = document.getElementById('cancelBatchBtn');
+
+            // 隐藏所有
+            startBtn.style.display = 'none';
+            pauseBtn.style.display = 'none';
+            resumeBtn.style.display = 'none';
+            cancelBtn.style.display = 'none';
+
+            switch (status) {
+                case 'running':
+                    pauseBtn.style.display = 'inline-block';
+                    cancelBtn.style.display = 'inline-block';
+                    break;
+                case 'paused':
+                    resumeBtn.style.display = 'inline-block';
+                    cancelBtn.style.display = 'inline-block';
+                    break;
+                case 'completed':
+                case 'cancelled':
+                case null:
+                default:
+                    startBtn.style.display = 'inline-block';
+                    break;
+            }
+        }
+
+        // 开始批量兑换
+        async function startBatchRedeem() {
+            const accountId = document.getElementById('redeemAccountId').value;
+            const codesInput = document.getElementById('batchRedeemCodes').value;
+            const codes = parseBatchCodes(codesInput);
+
+            if (codes.length === 0) {
+                showToast('请输入至少一个兑换码', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('startBatchBtn');
+            btn.disabled = true;
+            btn.textContent = '创建中...';
+
+            try {
+                const result = await apiCall(`/api/accounts/${accountId}/batch-redeem`, {
+                    method: 'POST',
+                    body: JSON.stringify({ codes })
+                });
+
+                if (result.success) {
+                    currentBatchTaskId = result.task_id;
+                    showToast(`批量兑换任务已创建，共 ${result.total_count} 个兑换码`, 'success');
+                    loadBatchRedeemStatus(accountId);
+                } else {
+                    showToast(result.message || '创建任务失败', 'error');
+                }
+            } catch (error) {
+                showToast('创建任务失败: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '开始批量兑换';
+            }
+        }
+
+        // 暂停批量兑换
+        async function pauseBatchRedeem() {
+            if (!currentBatchTaskId) return;
+
+            try {
+                const result = await apiCall(`/api/batch-redeem/${currentBatchTaskId}/pause`, {
+                    method: 'POST'
+                });
+
+                if (result.success) {
+                    showToast('任务已暂停', 'info');
+                    stopBatchProgressPolling();
+                    const accountId = document.getElementById('redeemAccountId').value;
+                    loadBatchRedeemStatus(accountId);
+                } else {
+                    showToast(result.message || '暂停失败', 'error');
+                }
+            } catch (error) {
+                showToast('暂停失败: ' + error.message, 'error');
+            }
+        }
+
+        // 恢复批量兑换
+        async function resumeBatchRedeem() {
+            if (!currentBatchTaskId) return;
+
+            try {
+                const result = await apiCall(`/api/batch-redeem/${currentBatchTaskId}/resume`, {
+                    method: 'POST'
+                });
+
+                if (result.success) {
+                    showToast('任务已恢复', 'success');
+                    const accountId = document.getElementById('redeemAccountId').value;
+                    loadBatchRedeemStatus(accountId);
+                } else {
+                    showToast(result.message || '恢复失败', 'error');
+                }
+            } catch (error) {
+                showToast('恢复失败: ' + error.message, 'error');
+            }
+        }
+
+        // 取消批量兑换
+        async function cancelBatchRedeem() {
+            if (!currentBatchTaskId) return;
+
+            if (!confirm('确定要取消批量兑换任务吗？已执行的兑换不会撤销。')) {
+                return;
+            }
+
+            try {
+                const result = await apiCall(`/api/batch-redeem/${currentBatchTaskId}/cancel`, {
+                    method: 'POST'
+                });
+
+                if (result.success) {
+                    showToast('任务已取消', 'info');
+                    stopBatchProgressPolling();
+                    currentBatchTaskId = null;
+                    const accountId = document.getElementById('redeemAccountId').value;
+                    loadBatchRedeemStatus(accountId);
+                } else {
+                    showToast(result.message || '取消失败', 'error');
+                }
+            } catch (error) {
+                showToast('取消失败: ' + error.message, 'error');
+            }
+        }
+
+        // 开始轮询任务进度
+        function startBatchProgressPolling(accountId) {
+            stopBatchProgressPolling();
+            batchRedeemTimer = setInterval(() => {
+                loadBatchRedeemStatus(accountId);
+            }, 5000);
+        }
+
+        // 停止轮询
+        function stopBatchProgressPolling() {
+            if (batchRedeemTimer) {
+                clearInterval(batchRedeemTimer);
+                batchRedeemTimer = null;
+            }
+            if (batchCountdownTimer) {
+                clearInterval(batchCountdownTimer);
+                batchCountdownTimer = null;
+            }
+        }
+
+        // 扩展 closeModal 以清理批量兑换定时器
+        const originalCloseModal = window.closeModal;
+        window.closeModal = function(modalId) {
+            if (modalId === 'redeemModal') {
+                stopBatchProgressPolling();
+            }
+            if (typeof originalCloseModal === 'function') {
+                originalCloseModal(modalId);
+            } else {
+                document.getElementById(modalId).style.display = 'none';
+            }
+        };

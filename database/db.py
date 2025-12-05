@@ -292,6 +292,26 @@ class Database:
                         )
                     ''')
 
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS batch_redeem_tasks (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            account_id INT NOT NULL,
+                            status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                            codes TEXT NOT NULL,
+                            current_index INT DEFAULT 0,
+                            total_count INT NOT NULL,
+                            success_count INT DEFAULT 0,
+                            fail_count INT DEFAULT 0,
+                            next_execute_at TIMESTAMP NULL,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                            completed_at TIMESTAMP NULL,
+                            FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+                            INDEX idx_batch_status (status),
+                            INDEX idx_batch_account (account_id)
+                        )
+                    ''')
+
                     # Add new fields if not exist
                     new_fields = [
                         ("accounts", "retry_count", "INT DEFAULT 2"),
@@ -401,8 +421,28 @@ class Database:
                         )
                     ''')
 
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS batch_redeem_tasks (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            account_id INTEGER NOT NULL,
+                            status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                            codes TEXT NOT NULL,
+                            current_index INTEGER DEFAULT 0,
+                            total_count INTEGER NOT NULL,
+                            success_count INTEGER DEFAULT 0,
+                            fail_count INTEGER DEFAULT 0,
+                            next_execute_at TIMESTAMP NULL,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            completed_at TIMESTAMP NULL,
+                            FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+                        )
+                    ''')
+
                     cursor.execute('CREATE INDEX IF NOT EXISTS idx_redeem_account ON redeem_history(account_id)')
                     cursor.execute('CREATE INDEX IF NOT EXISTS idx_redeem_time ON redeem_history(created_at)')
+                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_batch_status ON batch_redeem_tasks(status)')
+                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_batch_account ON batch_redeem_tasks(account_id)')
 
                     # SQLite: Add new fields if not exist
                     sqlite_new_fields = [

@@ -1,11 +1,3 @@
-/api-demo/
-/.idea/inspectionProfiles/profiles_settings.xml
-/.idea/inspectionProfiles/Project_Default.xml
-/.idea/.gitignore
-/.idea/leaflow-hub.iml
-/.idea/misc.xml
-/.idea/modules.xml
-/.idea/vcs.xml
-/.idea/git_toolbox_prj.xml
 /data/
 /apiDemo/
+/.idea/*
