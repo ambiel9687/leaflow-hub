@@ -8,8 +8,21 @@ Handles fetching and parsing balance information from Leaflow
 import re
 import json
 import html
+from datetime import datetime
 
 from config import logger
+
+
+def convert_iso_datetime(iso_str):
+    """将 ISO 8601 日期格式转换为 MySQL 兼容格式"""
+    if not iso_str:
+        return ''
+    try:
+        # 处理 2025-08-09T05:51:00.000000Z 格式
+        dt = datetime.fromisoformat(iso_str.replace('Z', '+00:00'))
+        return dt.strftime('%Y-%m-%d %H:%M:%S')
+    except (ValueError, AttributeError):
+        return iso_str
 
 
 class BalanceService:
@@ -73,7 +86,7 @@ class BalanceService:
                 'leaflow_uid': user.get('id'),
                 'leaflow_name': user.get('name', ''),
                 'leaflow_email': user.get('email', ''),
-                'leaflow_created_at': user.get('created_at', ''),
+                'leaflow_created_at': convert_iso_datetime(user.get('created_at', '')),
                 'current_balance': user.get('current_balance', '0'),
                 'total_consumed': user.get('total_consumed', '0')
             }
