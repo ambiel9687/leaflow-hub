@@ -6,6 +6,21 @@
     <title>Leaflow Auto Check-in Control Panel</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍃</text></svg>">
     <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        /* 防止页面闪烁：初始隐藏所有容器 */
+        .login-container, .dashboard { visibility: hidden; }
+    </style>
+    <script>
+        // 立即根据 token 预设容器可见性，防止闪烁
+        (function() {
+            var hasToken = !!localStorage.getItem('authToken');
+            var style = document.createElement('style');
+            style.textContent = hasToken
+                ? '.login-container{display:none!important}.dashboard{display:block!important;visibility:visible!important}'
+                : '.login-container{display:flex!important;visibility:visible!important}.dashboard{display:none!important}';
+            document.head.appendChild(style);
+        })();
+    </script>
 </head>
 <body>
     <!-- Toast Notification -->

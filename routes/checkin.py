@@ -66,13 +66,25 @@ def get_checkin_history(account_id):
     """Get checkin history for a specific account (last 10 days by default)"""
     try:
         days = request.args.get('days', 10, type=int)
-        history = db.fetchall('''
-            SELECT ch.id, ch.success, ch.message, ch.retry_times, ch.created_at, ch.checkin_date
-            FROM checkin_history ch
-            WHERE ch.account_id = ?
-              AND ch.checkin_date >= DATE(?, '-' || ? || ' days')
-            ORDER BY ch.created_at DESC
-        ''', (account_id, datetime.now(TIMEZONE).date(), days))
+        today = datetime.now(TIMEZONE).date()
+
+        if db.db_type == 'mysql':
+            history = db.fetchall('''
+                SELECT ch.id, ch.success, ch.message, ch.retry_times, ch.created_at, ch.checkin_date
+                FROM checkin_history ch
+                WHERE ch.account_id = ?
+                  AND ch.checkin_date >= DATE_SUB(?, INTERVAL ? DAY)
+                ORDER BY ch.created_at DESC
+            ''', (account_id, today, days))
+        else:
+            history = db.fetchall('''
+                SELECT ch.id, ch.success, ch.message, ch.retry_times, ch.created_at, ch.checkin_date
+                FROM checkin_history ch
+                WHERE ch.account_id = ?
+                  AND ch.checkin_date >= DATE(?, '-' || ? || ' days')
+                ORDER BY ch.created_at DESC
+            ''', (account_id, today, days))
+
         return jsonify(history or [])
     except Exception as e:
         logger.error(f"Get checkin history error: {e}")

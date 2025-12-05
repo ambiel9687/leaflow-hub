@@ -5,6 +5,9 @@ Accounts routes for Leaflow Auto Check-in Control Panel
 """
 
 import json
+import time
+import random
+import threading
 
 from flask import Blueprint, request, jsonify
 
@@ -13,6 +16,16 @@ from database import db, account_cache, data_cache
 from utils import token_required, parse_cookie_string
 
 accounts_bp = Blueprint('accounts', __name__)
+
+# 全局进度状态
+refresh_progress = {
+    'running': False,
+    'total': 0,
+    'completed': 0,
+    'success': 0,
+    'failed': 0,
+    'current_account': ''
+}
 
 
 @accounts_bp.route('/api/accounts', methods=['GET'])
@@ -229,11 +242,11 @@ def refresh_account_balance(account_id):
 @accounts_bp.route('/api/accounts/refresh-all-balance', methods=['POST'])
 @token_required
 def refresh_all_balances():
-    """Refresh balance info for all enabled accounts"""
-    from datetime import datetime
-    from config import TIMEZONE
-    from services import BalanceService
-    from services.checkin_service import LeafLowCheckin
+    """异步刷新所有启用账号的余额"""
+    global refresh_progress
+
+    if refresh_progress['running']:
+        return jsonify({'message': '刷新任务正在进行中', 'status': 'running'}), 400
 
     try:
         accounts = db.fetchall('SELECT * FROM accounts WHERE enabled = 1')
@@ -241,77 +254,94 @@ def refresh_all_balances():
         if not accounts:
             return jsonify({'message': 'No enabled accounts found'}), 404
 
-        results = {
-            'total': len(accounts),
-            'success': 0,
-            'failed': 0,
-            'details': []
-        }
+        # 初始化进度状态
+        refresh_progress['running'] = True
+        refresh_progress['total'] = len(accounts)
+        refresh_progress['completed'] = 0
+        refresh_progress['success'] = 0
+        refresh_progress['failed'] = 0
+        refresh_progress['current_account'] = ''
 
-        leaflow_checkin = LeafLowCheckin()
+        def do_refresh():
+            """后台执行刷新任务"""
+            global refresh_progress
+            from datetime import datetime
+            from config import TIMEZONE
+            from services import BalanceService
+            from services.checkin_service import LeafLowCheckin
 
-        for account in accounts:
             try:
-                token_data = json.loads(account['token_data'])
-                session = leaflow_checkin.create_session(token_data)
+                leaflow_checkin = LeafLowCheckin()
 
-                success, result = BalanceService.fetch_balance_info(session)
+                for account in accounts:
+                    refresh_progress['current_account'] = account['name']
 
-                if success:
-                    db.execute('''
-                        UPDATE accounts SET
-                            leaflow_uid = ?,
-                            leaflow_name = ?,
-                            leaflow_email = ?,
-                            leaflow_created_at = ?,
-                            current_balance = ?,
-                            total_consumed = ?,
-                            balance_updated_at = ?
-                        WHERE id = ?
-                    ''', (
-                        result['leaflow_uid'],
-                        result['leaflow_name'],
-                        result['leaflow_email'],
-                        result['leaflow_created_at'],
-                        result['current_balance'],
-                        result['total_consumed'],
-                        datetime.now(TIMEZONE),
-                        account['id']
-                    ))
+                    try:
+                        token_data = json.loads(account['token_data'])
+                        session = leaflow_checkin.create_session(token_data)
 
-                    results['success'] += 1
-                    results['details'].append({
-                        'name': account['name'],
-                        'success': True,
-                        'balance': result['current_balance']
-                    })
-                    logger.info(f"Account {account['name']} balance refreshed: {result['current_balance']}")
-                else:
-                    results['failed'] += 1
-                    results['details'].append({
-                        'name': account['name'],
-                        'success': False,
-                        'error': result
-                    })
-                    logger.warning(f"Account {account['name']} balance refresh failed: {result}")
+                        success, result = BalanceService.fetch_balance_info(session)
+
+                        if success:
+                            db.execute('''
+                                UPDATE accounts SET
+                                    leaflow_uid = ?,
+                                    leaflow_name = ?,
+                                    leaflow_email = ?,
+                                    leaflow_created_at = ?,
+                                    current_balance = ?,
+                                    total_consumed = ?,
+                                    balance_updated_at = ?
+                                WHERE id = ?
+                            ''', (
+                                result['leaflow_uid'],
+                                result['leaflow_name'],
+                                result['leaflow_email'],
+                                result['leaflow_created_at'],
+                                result['current_balance'],
+                                result['total_consumed'],
+                                datetime.now(TIMEZONE),
+                                account['id']
+                            ))
+                            refresh_progress['success'] += 1
+                            logger.info(f"Account {account['name']} balance refreshed: {result['current_balance']}")
+                        else:
+                            refresh_progress['failed'] += 1
+                            logger.warning(f"Account {account['name']} balance refresh failed: {result}")
+
+                    except Exception as e:
+                        refresh_progress['failed'] += 1
+                        logger.error(f"Account {account['name']} balance refresh error: {e}")
+
+                    refresh_progress['completed'] += 1
+
+                    # 每个账号间随机等待 300-1000ms
+                    time.sleep(random.uniform(0.3, 1.0))
+
+                account_cache.refresh_from_db(db)
+                data_cache.invalidate()
+                logger.info(f"All balances refresh completed: {refresh_progress['success']}/{refresh_progress['total']}")
 
             except Exception as e:
-                results['failed'] += 1
-                results['details'].append({
-                    'name': account['name'],
-                    'success': False,
-                    'error': str(e)
-                })
-                logger.error(f"Account {account['name']} balance refresh error: {e}")
+                logger.error(f"Refresh all balances error: {e}")
+            finally:
+                refresh_progress['running'] = False
+                refresh_progress['current_account'] = ''
 
-        account_cache.refresh_from_db(db)
-        data_cache.invalidate()
+        # 启动后台线程
+        thread = threading.Thread(target=do_refresh, daemon=True)
+        thread.start()
 
-        return jsonify({
-            'message': f"Refreshed {results['success']}/{results['total']} accounts",
-            'results': results
-        })
+        return jsonify({'message': '余额刷新任务已启动', 'status': 'started'})
 
     except Exception as e:
+        refresh_progress['running'] = False
         logger.error(f"Refresh all balances error: {e}")
         return jsonify({'message': f'Error: {str(e)}'}), 500
+
+
+@accounts_bp.route('/api/accounts/refresh-progress', methods=['GET'])
+@token_required
+def get_refresh_progress():
+    """获取刷新进度"""
+    return jsonify(refresh_progress)

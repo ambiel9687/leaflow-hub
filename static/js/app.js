@@ -675,34 +675,55 @@
                     showToast('余额刷新成功', 'success');
                 }
                 loadAccounts();
+                loadDashboard();
             } catch (error) {
                 showToast('余额刷新失败: ' + error.message, 'error');
             }
         }
 
-        // 刷新所有账号余额
+        // 刷新所有账号余额（异步）
         async function refreshAllBalances() {
             if (!confirm('确定刷新所有启用账号的余额吗？')) {
                 return;
             }
 
             try {
-                showToast('正在刷新所有账号余额...', 'info');
-
                 const result = await apiCall('/api/accounts/refresh-all-balance', {
                     method: 'POST'
                 });
 
-                if (result && result.results) {
-                    const { success, failed, total } = result.results;
-                    showToast(`余额刷新完成: ${success}/${total} 成功`, success === total ? 'success' : 'warning');
-                } else {
-                    showToast('余额刷新完成', 'success');
+                if (result.status === 'running') {
+                    showToast('刷新任务正在进行中，请稍候...', 'warning');
+                    return;
                 }
-                loadAccounts();
+
+                showToast('余额刷新任务已启动...', 'info');
+                pollRefreshProgress();
             } catch (error) {
                 showToast('余额刷新失败: ' + error.message, 'error');
             }
+        }
+
+        // 轮询刷新进度
+        function pollRefreshProgress() {
+            const interval = setInterval(async () => {
+                try {
+                    const progress = await apiCall('/api/accounts/refresh-progress');
+
+                    if (progress.running) {
+                        showToast(`正在刷新 ${progress.completed}/${progress.total}...`, 'info');
+                    } else {
+                        clearInterval(interval);
+                        const status = progress.success === progress.total ? 'success' : 'warning';
+                        showToast(`刷新完成: ${progress.success}/${progress.total} 成功`, status);
+                        loadAccounts();
+                        loadDashboard();
+                    }
+                } catch (error) {
+                    clearInterval(interval);
+                    showToast('获取刷新进度失败', 'error');
+                }
+            }, 3000);
         }
 
         // 计算距离当前时间的天数
