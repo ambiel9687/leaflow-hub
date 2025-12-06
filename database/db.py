@@ -328,7 +328,8 @@ class Database:
                             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                             FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
                             UNIQUE KEY uk_account_code (account_id, code),
-                            INDEX idx_invitation_account (account_id)
+                            INDEX idx_invitation_account (account_id),
+                            INDEX idx_invitation_code (code)
                         )
                     ''')
 
@@ -365,6 +366,12 @@ class Database:
                             cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {field_name} {field_type}")
                         except:
                             pass
+
+                    # Add search optimization index for email field
+                    try:
+                        cursor.execute('CREATE INDEX idx_account_email ON accounts(leaflow_email)')
+                    except:
+                        pass  # Index may already exist
 
                 else:
                     cursor.execute('''
@@ -485,6 +492,10 @@ class Database:
                     cursor.execute('CREATE INDEX IF NOT EXISTS idx_batch_status ON batch_redeem_tasks(status)')
                     cursor.execute('CREATE INDEX IF NOT EXISTS idx_batch_account ON batch_redeem_tasks(account_id)')
                     cursor.execute('CREATE INDEX IF NOT EXISTS idx_invitation_account ON invitation_codes(account_id)')
+
+                    # Search optimization indexes
+                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_invitation_code ON invitation_codes(code)')
+                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_account_email ON accounts(leaflow_email)')
 
                     # SQLite: Add new fields if not exist
                     sqlite_new_fields = [

@@ -1314,3 +1314,43 @@ body {
                 text-align: center;
             }
         }
+/* ========== 搜索框样式 ========== */
+
+/* 搜索容器样式 */
+.search-container {
+    transition: border-color 0.3s;
+}
+
+.search-container:focus-within {
+    border-color: var(--primary-color);
+}
+
+.search-container input::placeholder,
+.search-container select {
+    color: var(--text-muted);
+}
+
+.search-container input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+[data-theme="dark"] .search-container input:focus {
+    border-color: #0a84ff;
+}
+
+/* 搜索结果提示动画 */
+#searchResultHint {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

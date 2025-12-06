@@ -31,15 +31,17 @@ refresh_progress = {
 @accounts_bp.route('/api/accounts', methods=['GET'])
 @token_required
 def get_accounts():
-    """Get all accounts with today's checkin info"""
+    """Get all accounts with today's checkin info, support search"""
     from datetime import datetime
     from config import TIMEZONE
 
     try:
         today = datetime.now(TIMEZONE).date()
+        search_type = request.args.get('type', '').strip()
+        search_keyword = request.args.get('q', '').strip()
 
-        # 获取账号列表及今日签到信息
-        accounts = db.fetchall('''
+        # 基础查询 SQL
+        base_query = '''
             SELECT a.id, a.name, a.enabled, a.checkin_time_start, a.checkin_time_end,
                    a.check_interval, a.retry_count, a.created_at,
                    a.leaflow_uid, a.leaflow_name, a.leaflow_email, a.leaflow_created_at,
@@ -62,7 +64,42 @@ def get_accounts():
                 FROM invitation_codes
                 GROUP BY account_id
             ) ic ON a.id = ic.account_id
-        ''', (today,))
+        '''
+
+        params = [today]
+
+        # 根据搜索类型添加 WHERE 条件
+        if search_keyword and search_type:
+            if search_type == 'uid':
+                # UID 精确匹配
+                try:
+                    uid_value = int(search_keyword)
+                    base_query += ' WHERE a.leaflow_uid = ?'
+                    params.append(uid_value)
+                except ValueError:
+                    # 如果转换失败，返回空结果
+                    return jsonify([])
+            elif search_type == 'email':
+                # 邮箱模糊匹配
+                base_query += ' WHERE a.leaflow_email LIKE ?'
+                params.append(f'%{search_keyword}%')
+            elif search_type == 'name':
+                # 名称模糊匹配（支持账户名和平台用户名）
+                base_query += ' WHERE (a.name LIKE ? OR a.leaflow_name LIKE ?)'
+                pattern = f'%{search_keyword}%'
+                params.extend([pattern, pattern])
+            elif search_type == 'code':
+                # 邀请码精确匹配
+                base_query += '''
+                    WHERE EXISTS (
+                        SELECT 1 FROM invitation_codes
+                        WHERE account_id = a.id AND code = ?
+                        LIMIT 1
+                    )
+                '''
+                params.append(search_keyword)
+
+        accounts = db.fetchall(base_query, tuple(params))
         return jsonify(accounts or [])
     except Exception as e:
         logger.error(f"Get accounts error: {e}")
@@ -86,17 +123,24 @@ def add_account():
         else:
             token_data = cookie_input
 
-        db.execute('''
+        # 插入数据并获取新账号ID
+        cursor = db.execute('''
             INSERT INTO accounts (name, token_data)
             VALUES (?, ?)
         ''', (name, json.dumps(token_data)))
 
+        # 获取新插入的账号ID
+        new_account_id = cursor.lastrowid
+
         account_cache.refresh_from_db(db)
         data_cache.invalidate()
 
-        logger.info(f"Account '{name}' added and cache refreshed")
+        logger.info(f"Account '{name}' added with ID {new_account_id}")
 
-        return jsonify({'message': 'Account added successfully'})
+        return jsonify({
+            'message': 'Account added successfully',
+            'account_id': new_account_id
+        })
 
     except ValueError as e:
         return jsonify({'message': f'Invalid cookie format: {str(e)}'}), 400

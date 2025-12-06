@@ -117,6 +117,54 @@
                         <button class="btn btn-danger btn-sm" onclick="clearCheckinHistory('all')">清空所有记录</button>
                     </div>
                 </div>
+
+                <!-- 搜索区域 -->
+                <div class="search-container" style="margin: 15px 0; padding: 15px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <select
+                            id="searchType"
+                            class="form-control"
+                            style="width: 120px; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary);"
+                        >
+                            <option value="uid">UID</option>
+                            <option value="email" selected>邮箱</option>
+                            <option value="name">名称</option>
+                            <option value="code">邀请码</option>
+                        </select>
+
+                        <input
+                            type="text"
+                            id="searchKeyword"
+                            placeholder="请输入搜索关键字"
+                            class="form-control"
+                            style="flex: 1; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary);"
+                            onkeypress="if(event.key==='Enter') searchAccounts()"
+                        />
+
+                        <button
+                            class="btn btn-primary btn-sm"
+                            onclick="searchAccounts()"
+                            style="padding: 8px 20px; white-space: nowrap;"
+                        >
+                            🔍 搜索
+                        </button>
+
+                        <button
+                            class="btn btn-secondary btn-sm"
+                            onclick="clearSearch()"
+                            id="clearSearchBtn"
+                            style="padding: 8px 16px; white-space: nowrap; display: none;"
+                        >
+                            清空
+                        </button>
+                    </div>
+
+                    <!-- 搜索结果提示 -->
+                    <div id="searchResultHint" style="margin-top: 10px; color: var(--text-muted); font-size: 13px; display: none;">
+                        <!-- 动态显示搜索结果数量 -->
+                    </div>
+                </div>
+
                 <div class="table-wrapper">
                     <table class="table">
                         <thead>

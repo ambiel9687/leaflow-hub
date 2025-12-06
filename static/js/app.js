@@ -1,6 +1,12 @@
 // 全局变量
         let authToken = localStorage.getItem('authToken');
 
+        // 搜索状态管理
+        let currentSearchState = {
+            type: '',
+            keyword: ''
+        };
+
         // 主题管理
         function initTheme() {
             const savedTheme = localStorage.getItem('theme') || 'light';
@@ -270,12 +276,23 @@
 
         async function loadAccounts() {
             try {
-                const accounts = await apiCall('/api/accounts');
+                // 构建 URL
+                let url = '/api/accounts';
+                const { type, keyword } = currentSearchState;
+
+                if (keyword && type) {
+                    url += `?type=${encodeURIComponent(type)}&q=${encodeURIComponent(keyword)}`;
+                }
+
+                const accounts = await apiCall(url);
                 if (!accounts) return;
 
                 accountsData = accounts;
                 const tbody = document.getElementById('accountsList');
                 tbody.innerHTML = '';
+
+                // 显示搜索结果提示
+                showSearchResult(accounts.length, keyword);
 
                 if (accounts && accounts.length > 0) {
                     accounts.forEach(account => {
@@ -349,12 +366,10 @@
                         // 转义账号名中的特殊字符
                         const escapedName = account.name.replace(/'/g, "\\'").replace(/"/g, '\\"');
 
-                        // 动态生成邀请码按钮文本
+                        // 动态生成邀请码按钮文本 - 始终显示数量
                         const invitationTotal = account.invitation_total || 0;
                         const invitationUsed = account.invitation_used || 0;
-                        const invitationText = invitationTotal > 0
-                            ? `🎫 邀请码(${invitationUsed}/${invitationTotal})`
-                            : '🎫 邀请码';
+                        const invitationText = `🎫 邀请码(${invitationUsed}/${invitationTotal})`;
 
                         tr.innerHTML = `
                             <td>${nameColumnHtml}</td>
@@ -379,10 +394,56 @@
                         tbody.appendChild(tr);
                     });
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #a0aec0;">暂无账号</td></tr>';
+                    // 区分"无账号"和"无搜索结果"
+                    const message = keyword
+                        ? `未找到匹配的账号，请尝试其他关键字`
+                        : '暂无账号，点击"+ 添加账号"按钮添加';
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">${message}</td></tr>`;
                 }
             } catch (error) {
                 console.error('Failed to load accounts:', error);
+                showToast('加载账号列表失败', 'error');
+            }
+        }
+
+        // 执行账号搜索
+        function searchAccounts() {
+            const searchType = document.getElementById('searchType').value;
+            const searchKeyword = document.getElementById('searchKeyword').value.trim();
+
+            // 记录搜索状态
+            currentSearchState = {
+                type: searchKeyword ? searchType : '',
+                keyword: searchKeyword
+            };
+
+            // 显示/隐藏清空按钮
+            const clearBtn = document.getElementById('clearSearchBtn');
+            clearBtn.style.display = searchKeyword ? 'inline-block' : 'none';
+
+            // 执行搜索
+            loadAccounts();
+        }
+
+        // 清空搜索
+        function clearSearch() {
+            document.getElementById('searchKeyword').value = '';
+            document.getElementById('searchType').value = 'email';
+            document.getElementById('clearSearchBtn').style.display = 'none';
+            document.getElementById('searchResultHint').style.display = 'none';
+
+            currentSearchState = { type: '', keyword: '' };
+            loadAccounts();
+        }
+
+        // 显示搜索结果提示
+        function showSearchResult(count, keyword) {
+            const hint = document.getElementById('searchResultHint');
+            if (keyword) {
+                hint.textContent = `找到 ${count} 个匹配 "${keyword}" 的账号`;
+                hint.style.display = 'block';
+            } else {
+                hint.style.display = 'none';
             }
         }
 
@@ -439,10 +500,9 @@
                 try {
                     await apiCall(`/api/checkin/manual/${id}`, { method: 'POST' });
                     showToast('签到任务已触发', 'success');
-                    setTimeout(() => {
-                        loadDashboard();
-                        loadAccounts();
-                    }, 2000);
+                    // 立即刷新，无延迟
+                    loadDashboard();
+                    loadAccounts();
                 } catch (error) {
                     showToast('操作失败', 'error');
                 }
@@ -652,9 +712,17 @@
                 document.getElementById('redeemCode').value = '';
                 document.getElementById('redeemHistorySection').style.display = 'none';
                 document.getElementById('redeemHistoryList').innerHTML = '';
+
+                // 关闭时刷新数据
+                loadAccounts();  // 自动使用 currentSearchState，保持搜索条件
+                loadDashboard();
             } else if (modalId === 'invitationModal') {
                 document.getElementById('invitationAccountId').value = '';
                 document.getElementById('invitationList').innerHTML = '<div class="invitation-loading">加载中...</div>';
+
+                // 关闭时刷新数据
+                loadAccounts();  // 自动使用 currentSearchState，保持搜索条件
+                loadDashboard();
             }
         }
 
@@ -670,14 +738,33 @@
                     return;
                 }
 
-                await apiCall('/api/accounts', {
+                // 调用添加账号API
+                const result = await apiCall('/api/accounts', {
                     method: 'POST',
                     body: JSON.stringify(account)
                 });
 
                 showToast('账号添加成功', 'success');
                 closeModal('addAccountModal');
+
+                // 如果返回了账号ID，自动刷新该账号信息
+                if (result && result.account_id) {
+                    showToast('正在获取账号信息...', 'info');
+
+                    try {
+                        await apiCall(`/api/accounts/${result.account_id}/refresh-balance`, {
+                            method: 'POST'
+                        });
+                        showToast('账号信息获取成功', 'success');
+                    } catch (refreshError) {
+                        console.error('Refresh balance error:', refreshError);
+                        showToast('账号信息获取失败，请手动刷新', 'warning');
+                    }
+                }
+
+                // 最后刷新列表和仪表盘
                 loadAccounts();
+                loadDashboard();
             } catch (error) {
                 showToast('格式无效: ' + error.message, 'error');
             }
@@ -1589,12 +1676,11 @@
                 if (result.success) {
                     showToast(`邀请码创建成功: ${result.code.code}`, 'success');
 
-                    // 延迟1秒后刷新邀请码列表（确保后端数据已更新）
-                    setTimeout(async () => {
-                        await loadInvitationCodes(accountId, true); // 强制刷新，不使用缓存
-                        loadAccounts(); // 更新账户列表
-                        loadDashboard(); // 更新仪表盘
-                    }, 1000);
+                    // 立即刷新，无延迟，保持弹窗打开
+                    await loadInvitationCodes(accountId, true); // 强制刷新，不使用缓存
+                    loadAccounts(); // 更新账户列表（保持搜索状态）
+                    loadDashboard(); // 更新仪表盘
+                    // 不关闭弹窗，用户可以继续生成
                 } else {
                     showToast(result.message || '创建失败', 'error');
                 }
