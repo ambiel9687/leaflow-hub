@@ -25,7 +25,45 @@
 
         // 初始化主题（立即执行）
         initTheme();
-        
+
+        // 时间格式化工具函数
+        function formatRelativeTime(dateString) {
+            if (!dateString) return '';
+
+            // 北京时间（UTC+8）
+            const now = new Date();
+
+            // 如果数据库存储的是UTC时间，需要转换为北京时间
+            let date = new Date(dateString);
+
+            // 如果时间字符串不包含时区信息，假定为UTC时间，需要加8小时转为北京时间
+            // SQLite CURRENT_TIMESTAMP 返回UTC时间
+            if (!dateString.includes('+') && !dateString.includes('Z')) {
+                // 假定为UTC时间，转换为北京时间
+                date = new Date(date.getTime() + 8 * 3600000);
+            }
+
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+
+            if (diffMins < 1) return '刚刚';
+            if (diffMins < 60) return `${diffMins}分钟前`;
+            if (diffHours < 24) return `${diffHours}小时前`;
+            if (diffDays < 7) return `${diffDays}天前`;
+
+            // 超过7天显示具体日期（北京时间）
+            return date.toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZone: 'Asia/Shanghai'
+            });
+        }
+
         // Toast notification function
         function showToast(message, type = 'info') {
             const toast = document.getElementById('toast');
@@ -310,6 +348,13 @@
                         // 转义账号名中的特殊字符
                         const escapedName = account.name.replace(/'/g, "\\'").replace(/"/g, '\\"');
 
+                        // 动态生成邀请码按钮文本
+                        const invitationTotal = account.invitation_total || 0;
+                        const invitationUsed = account.invitation_used || 0;
+                        const invitationText = invitationTotal > 0
+                            ? `🎫 邀请码(${invitationUsed}/${invitationTotal})`
+                            : '🎫 邀请码';
+
                         tr.innerHTML = `
                             <td>${nameColumnHtml}</td>
                             <td>${basicInfoHtml}</td>
@@ -323,9 +368,9 @@
                             <td>${todayCheckinHtml}</td>
                             <td>
                                 <button class="btn btn-warning btn-sm" onclick="refreshBalance(${account.id})" title="刷新余额">刷新</button>
-                                <button class="btn btn-success btn-sm" onclick="manualCheckin(${account.id})">签到</button>
+                                <button class="btn btn-secondary btn-sm" onclick="showInvitationModal(${account.id}, '${escapedName}')">${invitationText}</button>
                                 <button class="btn btn-primary btn-sm" onclick="showRedeemModal(${account.id}, '${escapedName}')">兑换</button>
-                                <button class="btn btn-secondary btn-sm" onclick="showInvitationModal(${account.id}, '${escapedName}')">邀请码</button>
+                                <button class="btn btn-success btn-sm" onclick="manualCheckin(${account.id})">签到</button>
                                 <button class="btn btn-info btn-sm" onclick="showEditAccountModal(${account.id})">修改</button>
                                 <button class="btn btn-danger btn-sm" onclick="deleteAccount(${account.id})">删除</button>
                             </td>
@@ -1480,12 +1525,14 @@
                     const statusClass = isAvailable ? 'available' : 'used';
                     const statusText = isAvailable ? '可用' : '已用完';
                     const inviteUrl = `https://leaflow.net/invite/${code.code}`;
+                    const createdTime = formatRelativeTime(code.created_at);
 
                     return `
                         <div class="invitation-item ${statusClass}">
                             <div class="invitation-main">
                                 <code class="invitation-code">${code.code}</code>
                                 <span class="invitation-usage">使用次数 ${code.used_count || 0}/${code.max_uses}</span>
+                                <span class="invitation-time">创建于 ${createdTime}</span>
                                 <span class="invitation-status ${statusClass}">${statusText}</span>
                             </div>
                             <div class="invitation-actions">
@@ -1534,11 +1581,13 @@
 
                 if (result.success) {
                     showToast(`邀请码创建成功: ${result.code.code}`, 'success');
-                    // 刷新列表
-                    await loadInvitationCodes(accountId);
-                    // 刷新余额显示
-                    loadAccounts();
-                    loadDashboard();
+
+                    // 延迟1秒后刷新邀请码列表（确保后端数据已更新）
+                    setTimeout(async () => {
+                        await loadInvitationCodes(accountId, true); // 强制刷新，不使用缓存
+                        loadAccounts(); // 更新账户列表
+                        loadDashboard(); // 更新仪表盘
+                    }, 1000);
                 } else {
                     showToast(result.message || '创建失败', 'error');
                 }

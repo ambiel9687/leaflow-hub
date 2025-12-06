@@ -414,6 +414,7 @@ class InvitationService:
                 'is_active': bool(row.get('is_active', 1)),
                 'is_available': bool(row.get('is_available', 1)),
                 'note': row.get('note', ''),
+                'created_at': row.get('created_at'),  # 创建时间
             })
         return result
 

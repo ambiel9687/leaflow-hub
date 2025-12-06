@@ -45,7 +45,9 @@ def get_accounts():
                    a.leaflow_uid, a.leaflow_name, a.leaflow_email, a.leaflow_created_at,
                    a.current_balance, a.total_consumed, a.balance_updated_at,
                    ch.success as today_success, ch.message as today_message,
-                   ch.created_at as today_checkin_time
+                   ch.created_at as today_checkin_time,
+                   COALESCE(ic.total_codes, 0) as invitation_total,
+                   COALESCE(ic.used_codes, 0) as invitation_used
             FROM accounts a
             LEFT JOIN (
                 SELECT account_id, success, message, created_at,
@@ -53,6 +55,13 @@ def get_accounts():
                 FROM checkin_history
                 WHERE DATE(checkin_date) = DATE(?)
             ) ch ON a.id = ch.account_id AND ch.rn = 1
+            LEFT JOIN (
+                SELECT account_id,
+                       COUNT(*) as total_codes,
+                       COUNT(CASE WHEN used_count > 0 THEN 1 END) as used_codes
+                FROM invitation_codes
+                GROUP BY account_id
+            ) ic ON a.id = ic.account_id
         ''', (today,))
         return jsonify(accounts or [])
     except Exception as e:

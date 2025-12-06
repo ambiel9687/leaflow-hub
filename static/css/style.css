@@ -1151,8 +1151,10 @@ body {
         /* 邀请码列表项 */
         .invitation-item {
             display: flex;
-            flex-direction: column;
-            gap: 8px;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
             padding: 12px;
             border-bottom: 1px solid var(--border-color);
             transition: background 0.2s ease;
@@ -1175,6 +1177,7 @@ body {
             align-items: center;
             gap: 12px;
             flex-wrap: wrap;
+            flex: 1;
         }
 
         .invitation-code {
@@ -1233,6 +1236,18 @@ body {
         .invitation-actions {
             display: flex;
             gap: 8px;
+            flex-shrink: 0;
+        }
+
+        /* 创建时间样式 */
+        .invitation-time {
+            font-size: 11px;
+            color: var(--text-secondary);
+            opacity: 0.7;
+        }
+
+        [data-theme="dark"] .invitation-time {
+            color: #8e8e93;
         }
 
         .invitation-actions .btn-copy,
@@ -1277,6 +1292,11 @@ body {
             .invitation-stats button {
                 margin-left: 0;
                 width: 100%;
+            }
+
+            .invitation-item {
+                flex-direction: column;
+                align-items: flex-start;
             }
 
             .invitation-main {
