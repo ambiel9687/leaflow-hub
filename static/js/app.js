@@ -53,15 +53,16 @@
             if (diffHours < 24) return `${diffHours}小时前`;
             if (diffDays < 7) return `${diffDays}天前`;
 
-            // 超过7天显示具体日期（北京时间）
-            return date.toLocaleDateString('zh-CN', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                timeZone: 'Asia/Shanghai'
-            });
+            // 超过7天显示月-日，跨年显示年/月-日
+            const currentYear = now.getFullYear();
+            const dateYear = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+
+            if (dateYear !== currentYear) {
+                return `${dateYear}/${month}-${day}`; // 如：2024/12-05（10字符）
+            }
+            return `${month}-${day}`; // 如：12-05（5字符）
         }
 
         // Toast notification function
@@ -1469,7 +1470,7 @@
                 showToast('邀请码已刷新', 'success');
             } finally {
                 refreshBtn.disabled = false;
-                refreshBtn.innerHTML = '🔄 刷新';
+                // 文本会在 loadInvitationCodes 中更新，这里不再硬编码
             }
         }
 
@@ -1481,6 +1482,7 @@
             const totalUsesEl = document.getElementById('invitationTotalUses');
             const priceEl = document.getElementById('invitationPrice');
             const generateBtn = document.getElementById('generateInvitationBtn');
+            const refreshBtn = document.getElementById('refreshInvitationBtn');
 
             // 显示加载状态
             listEl.innerHTML = '<div class="invitation-loading">加载中...</div>';
@@ -1500,9 +1502,14 @@
                 }
 
                 // 更新统计信息
-                totalEl.textContent = result.stats.total || 0;
-                availableEl.textContent = result.stats.available || 0;
+                const total = result.stats.total || 0;
+                const available = result.stats.available || 0;
+                totalEl.textContent = total;
+                availableEl.textContent = available;
                 totalUsesEl.textContent = result.stats.total_uses || 0;
+
+                // 更新刷新按钮文本，始终显示数量
+                refreshBtn.innerHTML = `🔄 刷新邀请码(${available}/${total})`;
 
                 // 更新价格
                 if (result.settings && result.settings.price) {
@@ -1531,16 +1538,16 @@
                         <div class="invitation-item ${statusClass}">
                             <div class="invitation-main">
                                 <code class="invitation-code">${code.code}</code>
-                                <span class="invitation-usage">使用次数 ${code.used_count || 0}/${code.max_uses}</span>
-                                <span class="invitation-time">创建于 ${createdTime}</span>
+                                <span class="invitation-usage">使用 ${code.used_count || 0}/${code.max_uses}</span>
+                                <span class="invitation-time">${createdTime}</span>
                                 <span class="invitation-status ${statusClass}">${statusText}</span>
                             </div>
                             <div class="invitation-actions">
                                 <button class="btn btn-sm btn-copy" onclick="copyToClipboard('${code.code}')" title="复制邀请码">
-                                    📋 复制码
+                                    📋
                                 </button>
                                 <button class="btn btn-sm btn-copy-link" onclick="copyToClipboard('${inviteUrl}')" title="复制邀请链接">
-                                    🔗 复制链接
+                                    🔗
                                 </button>
                             </div>
                         </div>
